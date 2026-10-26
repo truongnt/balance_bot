@@ -1,3 +1,246 @@
 18:09:00  đang nối lại...
 18:09:01  đã kết nối 00:21:06:08:1C:D4
 18:09:02  cột: ms angle accel target gyro speed stepsL stepsR
+18:10:13  2311�
+18:10:18  > turn=100
+18:10:37  Params loaded from EEPROM:
+18:10:37  MPU OK
+18:10:37  Calib gyro: giu robot IM 4 giay (tu the nao cung duoc)...
+18:10:42  gyroBias = -306.67
+18:10:42  Goc ban dau: -5.08
+18:10:42  !! ARDUINO KHỞI ĐỘNG LẠI
+18:10:42  Bat dau!
+18:10:42  cột: ms angle accel target gyro speed stepsL stepsR
+18:10:43  === ROBOT BALANCE v3 + BT ===
+18:10:43  Params loaded from EEPROM:
+18:10:43  MPU OK
+18:10:43  Calib gyro: giu robot IM 4 giay (tu the nao cung duoc)...
+18:10:48  gyroBias = -321.25
+18:10:48  Goc ban dau: 1.57
+18:10:48  !! ARDUINO KHỞI ĐỘNG LẠI
+18:10:48  Bat dau!
+18:10:48  cột: ms angle accel target gyro speed stepsL stepsR
+18:10:48  cột: ms angle accel target gyro speed stepsL stepsR
+18:10:49  === ROBOT BALANCE v3 + BT ===
+18:10:49  Params loaded from EEPROM:
+18:10:49  MPU OK
+18:10:49  Calib gyro: giu robot IM 4 giay (tu the nao cung duoc)...
+18:10:54  gyroBias = -317.48
+18:10:54  Goc ban dau: 102.12
+18:10:54  Robot dang NAM (102.1 do) - motor tat, dung len de chay
+18:10:54  !! ARDUINO KHỞI ĐỘNG LẠI
+18:10:54  Bat dau!
+18:10:54  cột: ms angle accel target gyro speed stepsL stepsR
+18:10:54  cột: ms angle accel target gyro speed stepsL stepsR
+18:10:54  [+] RECOVERED
+18:10:55  === ROBOT BALANCE v3 + BT ===
+18:10:55  Params loaded from EEPROM:
+18:10:57  === ROBOT BALANCE v3 + BT ===
+18:10:57  Params loaded from EEPROM:
+18:10:57  MPU OK
+18:10:57  Calib gyro: giu robot IM 4 giay (tu the nao cung duoc)...
+18:11:02  gyroBias = -325.75
+18:11:02  Goc ban dau: 91.66
+18:11:02  Robot dang NAM (91.7 do) - motor tat, dung len de chay
+18:11:02  !! ARDUINO KHỞI ĐỘNG LẠI
+18:11:02  Bat dau!
+18:11:02  cột: ms angle accel target gyro speed stepsL stepsR
+18:11:03  cột: ms angle accel target gyro speed stepsL stepsR
+18:11:31  [+] RECOVERED
+18:11:50  > turn=100
+18:11:55  > turn=0
+18:11:59  > drive=0.40
+18:12:01  > drive=0.80
+18:12:02  > drive=1.20
+18:12:03  > drive=1.50
+18:12:04  > drive=1.50
+18:12:06  > drive=1.50
+18:12:06  > drive=1.50
+18:12:06  > drive=1.50
+18:12:06  > drive=1.50
+18:12:06  > drive=1.50
+18:12:06  > drive=1.50
+18:12:06  > drive=1.50
+18:12:06  > drive=1.50
+18:12:06  > drive=1.50
+18:12:06  > drive=1.50
+18:12:06  > drive=1.50
+18:12:06  > drive=1.50
+18:12:06  > drive=1.50
+18:12:06  > drive=1.50
+18:12:06  > drive=1.50
+18:12:06  > drive=1.50
+18:12:06  > drive=1.50
+18:12:06  > drive=1.50
+18:12:06  > drive=1.50
+18:12:06  > drive=1.50
+18:12:06  > drive=1.50
+18:12:06  > drive=1.50
+18:12:06  > drive=1.50
+18:12:06  > drive=1.50
+18:12:06  > drive=1.50
+18:12:06  > drive=1.50
+18:12:06  > drive=1.50
+18:12:06  > drive=1.50
+18:12:06  > drive=1.50
+18:12:06  > drive=1.50
+18:12:06  > drive=1.50
+18:12:06  > drive=1.50
+18:12:06  > drive=1.50
+18:12:06  > drive=1.50
+18:12:06  > drive=1.50
+18:12:07  > drive=1.50
+18:12:07  > drive=1.50
+18:12:07  > drive=1.50
+18:12:07  > drive=1.50
+18:12:07  > drive=1.50
+18:12:07  > drive=1.50
+18:12:07  > drive=1.50
+18:12:07  > drive=1.50
+18:12:07  > drive=1.50
+18:12:07  > drive=1.50
+18:12:07  > drive=1.50
+18:12:07  > drive=1.50
+18:12:07  > drive=1.50
+18:12:07  > drive=1.50
+18:12:07  > drive=1.50
+18:12:07  > drive=1.50
+18:12:07  > drive=1.50
+18:12:07  > drive=1.50
+18:12:08  > drive=1.50
+18:12:08  > drive=1.10
+18:12:09  > drive=0.70
+18:12:09  > drive=0.30
+18:12:09  > drive=-0.10
+18:12:09  > drive=-0.50
+18:12:10  > drive=-0.90
+18:12:10  > drive=-1.30
+18:12:10  > drive=-1.50
+18:12:10  > drive=-1.50
+18:12:10  > drive=-1.50
+18:12:10  > drive=-1.50
+18:12:10  > drive=-1.50
+18:12:10  > drive=-1.50
+18:12:10  > drive=-1.50
+18:12:10  > drive=-1.50
+18:12:10  > drive=-1.50
+18:12:11  > drive=-1.50
+18:12:11  > drive=-1.50
+18:12:11  > drive=-1.50
+18:12:11  > drive=-1.10
+18:12:11  > drive=-0.70
+18:12:11  > drive=-0.30
+18:12:11  > drive=0.10
+18:12:11  > drive=0.50
+18:12:11  > drive=0.90
+18:12:11  > drive=1.30
+18:12:12  > drive=1.50
+18:12:15  > drive=1.50
+18:12:15  > drive=1.50
+18:12:15  > drive=1.50
+18:12:15  > drive=1.50
+18:12:15  > drive=1.50
+18:12:15  > drive=1.50
+18:12:15  > drive=1.50
+18:12:16  > drive=1.50
+18:12:16  > drive=1.50
+18:12:17  > drive=1.50
+18:12:17  > drive=1.50
+18:12:17  > drive=1.50
+18:12:18  > drive=1.50
+18:12:18  > drive=1.50
+18:12:18  > drive=1.50
+18:12:18  > drive=1.50
+18:12:18  > drive=1.50
+18:12:18  > drive=1.50
+18:12:18  > drive=1.50
+18:12:18  > drive=1.50
+18:12:18  > drive=1.50
+18:12:19  > drive=1.50
+18:12:19  > drive=1.50
+18:12:19  > drive=1.50
+18:12:22  > drive=1.50
+18:12:23  > drive=1.50
+18:12:25  > drive=1.50
+18:12:25  > drive=1.50
+18:12:26  > drive=1.10
+18:12:27  > drive=0.70
+18:12:27  > drive=0.30
+18:12:28  > drive=-0.10
+18:12:28  > drive=-0.50
+18:12:28  > drive=-0.90
+18:12:28  > drive=-1.30
+18:12:29  > drive=-1.50
+18:12:34  > turn=100
+18:12:52  > drive=-1.10
+18:12:54  > drive=-0.70
+18:12:56  > turn=0
+18:12:59  > drive=-0.30
+18:13:00  > drive=0.10
+18:13:00  > drive=1.50
+18:13:00  > drive=1.50
+18:13:00  > dr61	1.05	0.63	2.8	125	-158	4879
+18:13:17  > turn=100
+18:13:17  > turn=0
+18:13:19  > turn=-100
+18:13:20  > turn=0
+18:13:20  > turn=100
+18:13:22  > turn=0
+18:13:23  > drive=1.50
+18:13:23  > drive=1.50
+18:13:23  > drive=1.50
+18:13:23  > drive=1.50
+18:13:23  > drive=1.50
+18:13:23  > drive=1.50
+18:13:23  > drive=1.50
+18:13:23  > drive=1.50
+18:13:23  > drive=1.50
+18:13:23  > drive=1.50
+18:13:23  > drive=1.50
+18:13:23  > drive=1.50
+18:13:24  > drive=1.50
+18:13:24  > drive=1.50
+18:13:24  > drive=1.50
+18:13:24  > drive=1.50
+18:13:24  > drive=1.50
+18:13:24  > drive=1.50
+18:13:24  > drive=1.50
+18:13:24  > drive=1.50
+18:13:24  > drive=1.50
+18:13:25  > drive=1.50
+18:13:53  > drive=1.50
+18:13:54  > drive=1.50
+18:13:54  > drive=1.50
+18:14:00  > drive=0.00
+18:14:00  > turn=0
+18:15:08  > drive=0.00
+18:15:08  > turn=0
+18:15:10  > KIV=0.0040
+18:15:11  > drive=1.00
+18:15:16  > drive=0.00
+18:15:18  > KIV=0.0060
+18:15:19  > drive=1.00
+18:15:23  > drive=0.00
+18:15:26  > drive=0.00
+18:15:26  > turn=0
+18:15:26  > KIV=0.0010
+18:16:28  > turn=100
+18:16:28  [!] FALLEN (filter drift! resync angle)
+18:16:29  > turn=0
+18:16:29  [+] RECOVERED
+18:16:31  > turn=100
+18:16:31  > turn=0
+18:16:31  > turn=100
+18:16:31  > turn=0
+18:16:33  > turn=100
+18:16:33  > turn=0
+18:16:34  > turn=100
+18:16:35  > turn=0
+18:16:35  > turn=100
+18:16:36  > turn=0
+18:16:37  > turn=100
+18:16:37  > turn=0
+18:16:38  > turn=100
+18:16:38  > turn=0
+18:16:39  > turn=100
+18:16:40  > turn=0

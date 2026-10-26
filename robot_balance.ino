@@ -1184,7 +1184,20 @@ void loop() {
   control_output = constrain(control_output,
                              -(float)max_steps_per_sec,
                              +(float)max_steps_per_sec);
-  setMotorSpeed((int16_t)control_output);
+
+  // Lenh lai cong THANG vao toc do banh, khong di qua target_angle.
+  // DO 26/10/2026: giu nghieng on dinh 3.16 do -> robot di 0.15cm trong 4 giay,
+  // tuc dung yen. Vong trong bam target rat chinh xac nen o trang thai xac lap
+  // no khong ra lenh buoc nao; luc do banh dung yen NHUNG MOTOR DANG CO DIEN va
+  // giu vi tri voi momen 0.18 N.m, trong khi momen lat o 3.16 do chi 32 mN.m.
+  // Phai toi ~18 do trong luc moi thang duoc, tuc robot nga truoc khi lan.
+  // => Nghieng khong bao gio lai duoc robot nay. bt_turn chay tot suot tu dau
+  //    chinh vi no cong thang vao lenh motor; lai phai di cung duong do.
+  // DRVVEL giu nguyen y nghia: DRIVE 1.0 = 20 steps/100ms = 200 step/s.
+  float drive_sp = bt_drive * drive_vel_gain * 10.0f;    // steps/100ms -> step/s
+  setMotorSpeed((int16_t)constrain(control_output + drive_sp,
+                                   -(float)max_steps_per_sec,
+                                   +(float)max_steps_per_sec));
 
   // === 6. Telemetry (bang VARS + log_mask, xem BANG BIEN LOG) ===
   if (++log_cnt >= log_div) {
