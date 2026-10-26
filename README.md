@@ -137,6 +137,26 @@ at 100 Hz as TSV. `analyze_log.py` gives per-column statistics and an amplitude 
 that spectrum is what finally identified a 0.6 Hz oscillation that half-second transcript
 logging had been aliasing into an apparent high-frequency limit cycle.
 
+## Browser control panel
+
+```powershell
+python robot_ui.py          # opens http://127.0.0.1:8777/
+```
+
+A live panel: readouts, a rolling 10-second plot of `angle` against `target`, a D-pad
+(arrow keys, space to stop), config buttons, and a slider for every parameter.
+
+It has to be a local server rather than a static page, because the RFCOMM socket to the
+HC-05 is only reachable from a local process — a browser cannot open Bluetooth. Python
+holds the link and serves the page over `127.0.0.1`; the server side is standard library
+only (`http.server` plus server-sent events).
+
+**The panel contains no list of parameters or telemetry fields.** On connect it sends `P`,
+reads the `NAME=value [min..max]` lines back and builds a control per parameter with the
+firmware's own range as the slider bounds; the columns come from `#COLS`. Add a row to the
+`PARAMS` table in the firmware and it appears here by itself, the same contract
+`robot_control.py` already follows.
+
 ## Phone control
 
 The firmware also answers the bare single characters that Arduino-BT-style phone apps send
@@ -151,6 +171,7 @@ without an upload.
 ```
 robot_balance.ino       Firmware
 robot_control.py        PC console: Bluetooth, live telemetry, command input
+robot_ui.py             Browser control panel on localhost (stdlib server + SSE)
 robot_auto.py           Keeps the link up and re-sends the config after every reboot
 analyze_log.py          Statistics and amplitude spectrum for logs/*_raw.tsv
 test_bt_parser.py       Host-side simulation of the BT command state machine

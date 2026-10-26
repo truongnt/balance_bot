@@ -40,6 +40,7 @@ motors are mounted mirrored. Don't "fix" this asymmetry.
 ```
 robot_balance.ino       — Arduino firmware (main file)
 robot_control.py        — PC controller: BT connect, live telemetry, command input
+robot_ui.py             — Browser control panel on localhost (stdlib + SSE)
 set_hc05_baud.py        — One-shot script: change HC-05 baud rate via AT mode
 hc05_config\            — Arduino sketch to blindly send AT+UART=115200
 passthrough\            — Minimal Serial passthrough sketch (rarely needed)
@@ -381,6 +382,47 @@ A missing file is not fatal — `load_config()` raises, the module prints a warn
 
 Adding a tuning command means touching three places: the `parseCommand()` branch in the
 `.ino`, `_TUNE_RE` + `cmd_map` in `process_command()`, and the help text.
+
+### Browser control panel (`robot_ui.py`)
+
+```powershell
+python robot_ui.py                      # http://127.0.0.1:8777/
+python robot_ui.py <MAC> --port 8800 --no-browser
+```
+
+Python holds the RFCOMM socket and serves a page on localhost; a browser cannot open
+Bluetooth itself, so a static page was never an option. Server side is standard library
+only — `ThreadingHTTPServer` plus server-sent events at 20 Hz. `GET /state` returns the
+same snapshot as one SSE frame, which makes it easy to check from the shell:
+
+```powershell
+curl -s http://127.0.0.1:8777/state
+```
+
+**It holds no list of parameters or columns.** On connect it sends `COLS` then `P`, parses
+`NAME=value [min..max]` and builds one slider per parameter bounded by the firmware's own
+range; telemetry columns come from `#COLS`. Same contract as `robot_control.py`: adding a
+`PARAMS` row needs no change here. `PRIORITY` only decides which names sort to the top, and
+an unlisted name still appears.
+
+Three things that are easy to get wrong, all of them found by running it:
+
+- **State cannot be inferred from telemetry arriving.** That was true until 2026-10-26,
+  when the fall branch started emitting telemetry too. The panel reads `|angle|` against
+  the `FALL` parameter it already has instead.
+- **Corrupt BT frames must be filtered before they reach the log.** A broken packet
+  arrives as hundreds of NUL bytes; logged verbatim it inflated every SSE frame to tens of
+  KB, twenty times a second. `Link.clean()` drops any line that is more than 40%
+  unprintable, and split telemetry rows are counted as `junk` rather than logged. The frame
+  went from ~40 KB to 2.3 KB.
+- **Slider drags are coalesced over 150 ms.** Sending every `input` event floods the uplink
+  and pushes telemetry out of the 115200-baud budget.
+
+**One connection at a time.** The HC-05 accepts a single RFCOMM link, so `robot_ui.py`,
+`robot_control.py`, `robot_auto.py` and a phone are mutually exclusive. Two of them running
+at once is not a clean failure: both appear to work while the stream is split between them
+and arrives corrupted. If the log fills with junk-line counts, check for a second client
+before suspecting the radio.
 
 ### Log files
 Each session writes **two** files into `logs\`:
