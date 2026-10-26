@@ -39,7 +39,7 @@ CLI = r"C:\Program Files\Arduino CLI\arduino-cli.exe"
 SKETCH = os.path.dirname(os.path.abspath(__file__))
 FQBN = "arduino:avr:uno"
 BOARD_VIDPID = "0843:5740"        # clone dùng USB CDC, KHÔNG phải CH340
-TIMEOUT = 60                      # giây cho mỗi lần nạp
+TIMEOUT = 180                     # giây: đã gồm cả biên dịch
 
 
 def find_board():
@@ -63,13 +63,32 @@ def show(ports, board_dev):
 
 
 def upload(port, attempt):
-    """Một lần nạp, có hạn giờ cứng. Treo thì giết, không chờ mãi."""
-    print(f"\n--- lần {attempt}: nạp vào {port} (hạn {TIMEOUT}s) ---", flush=True)
-    p = subprocess.Popen([CLI, "upload", "-p", port, "--fqbn", FQBN, SKETCH],
+    """Biên dịch RỒI nạp, trong một lệnh, có hạn giờ cứng.
+
+    Dùng `compile --upload` chứ KHÔNG phải `upload` trần. `arduino-cli upload`
+    không biên dịch — nó nạp lại bản build sẵn có trong cache, mà cache được
+    định danh bằng BĂM ĐƯỜNG DẪN sketch. Chỉ cần khác hoa/thường trong đường
+    dẫn ("d:\..." so với "D:\...") là ra hai thư mục cache khác nhau, và máy
+    này đang có năm thư mục như vậy.
+
+    ĐO 26/10/2026: lệnh nạp chạy trơn tru, báo "New upload port: COM7" và thoát
+    0, nhưng board lại chạy binary CŨ — telemetry cho thấy speed luôn bằng
+    ctrlout, tức phần drive_sp mới thêm không hề có trong flash. Mất một vòng
+    chẩn đoán dài mới phát hiện, vì mọi dấu hiệu bề mặt đều báo thành công.
+    Biên dịch trong cùng lệnh thì binary chắc chắn khớp mã nguồn.
+    """
+    print(f"\n--- lần {attempt}: biên dịch + nạp vào {port} (hạn {TIMEOUT}s) ---", flush=True)
+    p = subprocess.Popen([CLI, "compile", "--upload", "-p", port,
+                          "--fqbn", FQBN, SKETCH],
                          stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     try:
         out, _ = p.communicate(timeout=TIMEOUT)
-        for ln in (out or "").strip().splitlines()[-4:]:
+        lines = (out or "").strip().splitlines()
+        # In dong kich thuoc: doi chieu duoc voi lan bien dich truoc.
+        for ln in lines:
+            if "program storage" in ln or "dynamic memory" in ln:
+                print("   |", ln.strip()[:100])
+        for ln in lines[-3:]:
             print("   |", ln[:100])
         return p.returncode == 0
     except subprocess.TimeoutExpired:

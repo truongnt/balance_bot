@@ -1,0 +1,668 @@
+18:58:23  đang nối lại...
+18:58:24  đã kết nối 00:21:06:08:1C:D4
+18:58:26  cột: ms angle accel target gyro speed stepsL stepsR
+18:58:27  "i��Tk��.24	-5.1	-148	-826	-710
+18:59:24  > drive=0.40
+18:59:26  > drive=0.80
+18:59:26  > drive=1.20
+18:59:28  > drive=1.50
+18:59:29  > drive=1.50
+18:59:29  > drive=1.50
+18:59:29  > drive=1.50
+18:59:30  > turn=100
+18:59:30  > turn=0
+18:59:31  > turn=100
+18:59:32  > turn=0
+18:59:41  > drive=1.50
+18:59:42  === ROBOT BALANCE v3 + BT ===
+18:59:42  Params loaded from EEPROM:
+18:59:42  MPU OK
+18:59:42  Calib gyro: giu robot IM 4 giay (tu the nao cung duoc)...
+18:59:47  gyroBias = -318.22
+18:59:47  Goc ban dau: 88.39
+18:59:47  Robot dang NAM (88.4 do) - motor tat, dung len de chay
+18:59:47  !! ARDUINO KHỞI ĐỘNG LẠI
+18:59:47  Bat dau!
+18:59:47  cột: ms angle accel target gyro speed stepsL stepsR
+18:59:47  > turn=-100
+18:59:47  > turn=0
+18:59:47  > turn=-100
+18:59:47  > turn=0
+18:59:47  cột: ms angle accel target gyro speed stepsL stepsR
+19:00:32  > drive=0.00
+19:00:32  > turn=0
+19:02:42  �178751	10.42	21.41	0.00	-82.8	0	0	0
+19:02:42  [+] RECOVERED
+19:02:56  > drive=0.40
+19:02:57  > drive=0.80
+19:02:57  > drive=1.20
+19:02:58  > drive=1.50
+19:02:58  > drive=1.50
+19:02:59  > drive=1.50
+19:02:59  > drive=1.50
+19:02:59  > drive=1.10
+19:02:59  > drive=0.70
+19:03:00  > drive=0.30
+19:03:00  > drive=-0.10
+19:03:00  > drive=-0.50
+19:03:00  > drive=-0.90
+19:03:00  > drive=-1.30
+19:03:00  > drive=-1.50
+19:03:01  > drive=-1.50
+19:03:01  > drive=-1.50
+19:03:01  > drive=-1.50
+19:03:01  > drive=-1.50
+19:03:01  > drive=-1.50
+19:03:02  > drive=-1.50
+19:03:02  > drive=-1.50
+19:03:02  > drive=-1.50
+19:03:02  > drive=-1.50
+19:03:02  > drive=-1.50
+19:03:02  > drive=-1.50
+19:03:02  > drive=-1.50
+19:03:02  > drive=-1.50
+19:03:02  > drive=-1.50
+19:03:02  > drive=-1.50
+19:03:02  > drive=-1.50
+19:03:02  > drive=-1.50
+19:03:03  > drive=-1.50
+19:03:03  > drive=-1.50
+19:03:03  > drive=-1.50
+19:03:03  > drive=-1.50
+19:03:03  > drive=-1.50
+19:03:03  > drive=-1.50
+19:03:03  > drive=-1.50
+19:03:03  > drive=-1.50
+19:03:03  > drive=-1.50
+19:03:03  > drive=-1.50
+19:03:03  > drive=-1.50
+19:03:03  > drive=-1.50
+19:03:03  > drive=-1.50
+19:03:03  > drive=-1.50
+19:03:03  > drive=-1.50
+19:03:03  > drive=-1.50
+19:03:03  > drive=-1.50
+19:03:03  > drive=-1.50
+19:03:03  > drive=-1.50
+19:03:03  > drive=-1.50
+19:03:03  > drive=-1.50
+19:03:03  > drive=-1.50
+19:03:03  > drive=-1.50
+19:03:03  > drive=-1.50
+19:03:03  > drive=-1.50
+19:03:03  > drive=-1.50
+19:03:03  > drive=-1.50
+19:03:03  > drive=-1.50
+19:03:03  > drive=-1.50
+19:03:04  > drive=-1.50
+19:03:04  > drive=-1.50
+19:03:04  > drive=-1.50
+19:03:04  > drive=-1.50
+19:03:04  > drive=-1.50
+19:03:04  > drive=-1.50
+19:03:04  > drive=-1.50
+19:03:04  > drive=-1.50
+19:03:04  > drive=-1.10
+19:03:05  > drive=-0.70
+19:03:05  > drive=-0.30
+19:03:05  > drive=0.10
+19:03:05  > drive=0.50
+19:03:05  > drive=0.90
+19:03:05  > drive=1.30
+19:03:05  > drive=1.50
+19:03:05  > drive=1.50
+19:03:05  > drive=1.50
+19:03:05  > drive=1.50
+19:03:05  > drive=1.50
+19:03:05  > drive=1.50
+19:03:05  > drive=1.50
+19:03:05  > drive=1.50
+19:03:05  > drive=1.50
+19:03:05  > drive=1.50
+19:03:05  > drive=1.50
+19:03:05  > drive=1.50
+19:03:05  > drive=1.50
+19:03:05  > drive=1.50
+19:03:05  > drive=1.50
+19:03:05  > drive=1.50
+19:03:05  > drive=1.50
+19:03:05  > drive=1.50
+19:03:05  > drive=1.50
+19:03:05  > drive=1.50
+19:03:05  > drive=1.50
+19:03:05  > drive=1.50
+19:03:05  > drive=1.50
+19:03:05  > drive=1.50
+19:03:06  > drive=1.50
+19:03:06  > drive=1.50
+19:03:06  > drive=1.50
+19:03:06  > drive=1.50
+19:03:06  > drive=1.50
+19:03:06  > drive=1.50
+19:03:06  > drive=1.50
+19:03:06  > drive=1.50
+19:03:06  > drive=1.50
+19:03:06  > drive=1.50
+19:03:06  > drive=1.50
+19:03:06  > drive=1.50
+19:03:06  > drive=1.50
+19:03:06  > drive=1.50
+19:03:06  > drive=1.50
+19:03:06  > drive=1.50
+19:03:06  > drive=1.50
+19:03:06  > drive=1.50
+19:03:06  > drive=1.50
+19:03:06  > drive=1.50
+19:03:08  > drive=1.50
+19:03:09  > drive=1.50
+19:03:09  > drive=1.50
+19:03:09  > drive=1.50
+19:03:09  > drive=1.50
+19:03:09  > drive=1.50
+19:03:09  > drive=1.50
+19:03:09  > drive=1.50
+19:03:09  > drive=1.50
+19:03:09  > drive=1.50
+19:03:09  > drive=1.50
+19:03:09  > drive=1.50
+19:03:09  > drive=1.50
+19:03:09  > drive=1.50
+19:03:09  > drive=1.50
+19:03:09  > drive=1.50
+19:03:09  > drive=1.50
+19:03:09  > drive=1.50
+19:03:09  > drive=1.50
+19:03:09  > drive=1.50
+19:03:09  > drive=1.50
+19:03:09  > drive=1.50
+19:03:09  > drive=1.50
+19:03:09  > drive=1.50
+19:03:09  > drive=1.50
+19:03:10  > drive=1.50
+19:03:10  > drive=1.50
+19:03:10  > drive=1.50
+19:03:10  > drive=1.50
+19:03:10  > drive=1.50
+19:03:10  > drive=1.50
+19:03:10  > drive=1.50
+19:03:10  > drive=1.50
+19:03:10  > drive=1.50
+19:03:10  > drive=1.50
+19:03:10  > drive=1.50
+19:03:10  > drive=1.50
+19:03:10  > drive=1.50
+19:03:10  > drive=1.50
+19:03:10  > drive=1.50
+19:03:10  > drive=1.50
+19:03:10  > drive=1.50
+19:03:10  > drive=1.50
+19:03:10  > drive=1.50
+19:03:10  > drive=1.50
+19:03:10  > drive=1.50
+19:03:10  > drive=1.50
+19:03:10  > drive=1.50
+19:03:10  > drive=1.50
+19:03:10  > drive=1.50
+19:03:10  > drive=1.50
+19:03:10  > drive=1.50
+19:03:10  > drive=1.50
+19:03:11  > drive=1.50
+19:03:11  > drive=1.50
+19:03:11  > drive=1.50
+19:03:11  > drive=1.50
+19:03:11  > drive=1.50
+19:03:11  > drive=1.50
+19:03:11  > drive=1.50
+19:03:11  > drive=1.50
+19:03:12  > drive=1.10
+19:03:12  > drive=0.70
+19:03:13  > drive=0.30
+19:03:13  > drive=-0.10
+19:03:13  > drive=-0.50
+19:03:13  > drive=-0.90
+19:03:13  > drive=-1.30
+19:03:13  > drive=-1.50
+19:03:13  > drive=-1.50
+19:03:13  > drive=-1.50
+19:03:13  > drive=-1.50
+19:03:13  > drive=-1.50
+19:03:13  > drive=-1.50
+19:03:13  > drive=-1.50
+19:03:13  > drive=-1.50
+19:03:13  > drive=-1.50
+19:03:13  > drive=-1.50
+19:03:13  > drive=-1.50
+19:03:14  > drive=-1.50
+19:03:14  > drive=-1.50
+19:03:14  > drive=-1.50
+19:03:14  > drive=-1.50
+19:03:14  > drive=-1.50
+19:03:14  > drive=-1.50
+19:03:14  > drive=-1.50
+19:03:14  > drive=-1.50
+19:03:14  > drive=-1.50
+19:03:14  > drive=-1.50
+19:03:14  > drive=-1.50
+19:03:15  ��213099	5.11	41.18	-0.60	-2.4	-1686	1596	1561
+19:03:15  �[!] FALLEN (filter drift! resync angle)
+19:03:15  ����213149	47.21	3��213539	4.14	15.49	-0.34	-2.4	-290	-18	-17
+19:03:15  [!] FALLEN (filter drift! resync angle)
+19:03:15  <��Ů������?8	�800	19.5	0	-48	-47
+19:03:15  �213685	59.41	40.20	0.00	20.���J-47
+19:03:15  �213695	57.69	32.40	0.00	14.3	0	-48	-47
+19:03:15  [+] RECOVERED
+19:03:16  [!] FALLEN (filter drift! resync angle)
+19:03:16  ���!�>���214205	41.66	8.12	0.00	0.4	0	-180	-180
+19:03:16  [+] RECOVERED
+19:03:16  �LӪJ-14.63	-35.67	-0.03	75.2	1567	17	19
+19:03:16  ��(�ʪJ173	175
+19:03:16  ��214666	-5.90	-0.92	-0.81	145.2	909	333	335
+19:03:18  > drive=-1.50
+19:03:19  > turn=100
+19:03:19  > turn=0
+19:03:19  [!] FALLEN (filter drift! resync angle)
+19:03:20  [+] RECOVERED
+19:03:20  [!] FALLEN (filter drift! resync a����J4r��J48.38	0.00	-2.4	0	-28	-28
+19:03:20  > turn=-100
+19:03:20  > turn=0
+19:03:20  [+] RECOVERED
+19:03:20  [!] FALLEN (filter drift! res^k��끕%L���J47.5��218694	57.28	95.08	0.00	-2.4	0	-13	-13
+19:03:20  ��218714	63.35	105.60	0.00	-2.4	0	-13	-13
+19:03:21  > turn=0
+19:03:21  > drive=-1.50
+19:03:22  > turn=100
+19:03:23  > turn=0
+19:03:23  > turn=100
+19:03:23  > turn=100
+19:03:23  > turn=100
+19:03:23  > turn=100
+19:03:23  > turn=100
+19:03:23  > turn=100
+19:03:23  > turn=100
+19:03:23  > turn=100
+19:03:23  > turn=100
+19:03:23  > turn=100
+19:03:23  > turn=100
+19:03:23  > turn=100
+19:03:23  > turn=100
+19:03:23  > turn=100
+19:03:23  > turn=100
+19:03:23  > turn=100
+19:03:23  > turn=100
+19:03:23  > turn=100
+19:03:23  > turn=100
+19:03:23  > turn=100
+19:03:23  > turn=100
+19:03:23  > turn=100
+19:03:23  > turn=100
+19:03:23  > turn=100
+19:03:23  > turn=100
+19:03:23  > turn=100
+19:03:23  > turn=100
+19:03:23  > turn=100
+19:03:23  > turn=100
+19:03:23  > turn=100
+19:03:23  > turn=100
+19:03:24  > turn=100
+19:03:24  > turn=-100
+19:03:24  > turn=-100
+19:03:24  > turn=-100
+19:03:24  > turn=-100
+19:03:25  > turn=-100
+19:03:25  > turn=-100
+19:03:25  > turn=100
+19:03:26  > turn=100
+19:03:26  > turn=100
+19:03:29  > turn=100
+19:03:29  > turn=100
+19:03:29  > turn=100
+19:03:29  > turn=0
+19:03:30  �28366	132.22	133.00	0.0�	-2.4	0	-13	-13
+19:03:30  ��	�J0.00	-2.4	0	-13	-13
+19:03:30  �&���J132�22	133.00	0.00	-2.4	0	-13	-13
+19:03:30  �285�6	132.22�1�3.00	0.00	-2.4	0	-13	-13
+19:03:30  KL�H�228636	132.22	133.00	0.00	-2.4	0	-13	-13
+19:03:30  ���J13B-�	B228756	132.22	133.00	0.00	-2.4	0	-13	-13
+19:03:30  B@�00	-228916	125.82	79.42	0.00	31.6	0	-13	-13
+19:03:31  [+] RECOVERED
+19:03:33  [!] FALLEN (filter drift! resync angle)
+19:03:33  [+] RECOVERED
+19:03:33  [!] FALLEN (filter drift! resync angle)
+19:03:34  [+] RECOVERED
+19:04:18  > drive=-1.10
+19:04:19  > drive=-0.70
+19:04:19  > drive=-0.30
+19:04:19  > drive=0.10
+19:04:20  > drive=0.50
+19:04:20  > drive=0.90
+19:04:20  > drive=1.30
+19:04:20  > drive=1.50
+19:04:20  > drive=1.50
+19:04:21  > drive=1.50
+19:04:21  > drive=1.50
+19:04:21  > drive=1.50
+19:04:21  > drive=1.50
+19:04:22  > drive=1.50
+19:04:22  > drive=1.50
+19:04:22  > drive=1.50
+19:04:22  > drive=1.50
+19:04:23  > drive=1.50
+19:04:23  > drive=1.50
+19:04:23  > drive=1.50
+19:04:23  > drive=1.50
+19:04:23  > drive=1.50
+19:04:24  > drive=1.50
+19:04:24  > drive=1.50
+19:04:30  > drive=1.10
+19:04:31  > drive=0.70
+19:04:31  > drive=0.30
+19:04:31  > drive=-0.10
+19:04:31  > drive=-0.50
+19:04:31  > drive=-0.90
+19:04:32  > drive=-1.30
+19:04:32  > drive=-1.50
+19:04:35  > drive=-1.50
+19:04:35  > drive=-1.50
+19:04:35  > drive=-1.50
+19:04:35  > drive=-1.50
+19:04:40  > drive=-1.50
+19:04:41  > drive=-1.50
+19:04:41  > drive=-1.50
+19:04:41  > drive=-1.50
+19:04:41  > drive=-1.50
+19:04:41  > drive=-1.50
+19:04:49  === ROBOT BALANCE v3 + BT ===
+19:04:49  Params loaded from EEPROM:
+19:04:49  MPU OK
+19:04:49  Calib gyro: giu robot IM 4 giay (tu the nao cung duoc)...
+19:04:58  im lặng 8s -> coi như đứt, nối lại
+19:04:58  đang nối lại...
+19:05:13  nối lỗi: TimeoutError
+19:05:16  đang nối lại...
+19:05:20  nối lỗi: TimeoutError
+19:05:23  đang nối lại...
+19:05:28  nối lỗi: TimeoutError
+19:05:31  đang nối lại...
+19:05:36  nối lỗi: TimeoutError
+19:05:39  đang nối lại...
+19:05:44  nối lỗi: TimeoutError
+19:05:47  đang nối lại...
+19:05:53  nối lỗi: TimeoutError
+19:05:56  đang nối lại...
+19:06:01  nối lỗi: TimeoutError
+19:06:04  đang nối lại...
+19:06:09  nối lỗi: TimeoutError
+19:06:12  đang nối lại...
+19:06:17  nối lỗi: TimeoutError
+19:06:20  đang nối lại...
+19:06:25  nối lỗi: TimeoutError
+19:06:28  đang nối lại...
+19:06:33  nối lỗi: TimeoutError
+19:06:36  đang nối lại...
+19:06:41  nối lỗi: TimeoutError
+19:06:44  đang nối lại...
+19:06:50  nối lỗi: TimeoutError
+19:06:53  đang nối lại...
+19:06:58  nối lỗi: TimeoutError
+19:07:01  đang nối lại...
+19:07:06  nối lỗi: TimeoutError
+19:07:09  đang nối lại...
+19:07:14  nối lỗi: TimeoutError
+19:07:17  đang nối lại...
+19:07:22  nối lỗi: TimeoutError
+19:07:25  đang nối lại...
+19:07:30  nối lỗi: TimeoutError
+19:07:33  đang nối lại...
+19:07:38  nối lỗi: TimeoutError
+19:07:41  đang nối lại...
+19:07:46  nối lỗi: TimeoutError
+19:07:49  đang nối lại...
+19:07:55  nối lỗi: TimeoutError
+19:07:58  đang nối lại...
+19:08:03  nối lỗi: TimeoutError
+19:08:06  đang nối lại...
+19:08:11  nối lỗi: TimeoutError
+19:08:14  đang nối lại...
+19:08:19  nối lỗi: TimeoutError
+19:08:22  đang nối lại...
+19:08:27  nối lỗi: TimeoutError
+19:08:30  đang nối lại...
+19:08:35  nối lỗi: TimeoutError
+19:08:38  đang nối lại...
+19:08:43  nối lỗi: TimeoutError
+19:08:46  đang nối lại...
+19:08:51  nối lỗi: TimeoutError
+19:08:54  đang nối lại...
+19:09:00  nối lỗi: TimeoutError
+19:09:03  đang nối lại...
+19:09:08  nối lỗi: TimeoutError
+19:09:11  đang nối lại...
+19:09:16  nối lỗi: TimeoutError
+19:09:19  đang nối lại...
+19:09:24  nối lỗi: TimeoutError
+19:09:27  đang nối lại...
+19:09:32  nối lỗi: TimeoutError
+19:09:35  đang nối lại...
+19:09:40  nối lỗi: TimeoutError
+19:09:43  đang nối lại...
+19:09:48  nối lỗi: TimeoutError
+19:09:51  đang nối lại...
+19:09:56  nối lỗi: TimeoutError
+19:09:59  đang nối lại...
+19:10:05  nối lỗi: TimeoutError
+19:10:08  đang nối lại...
+19:10:13  nối lỗi: TimeoutError
+19:10:16  đang nối lại...
+19:10:21  nối lỗi: TimeoutError
+19:10:24  đang nối lại...
+19:10:29  nối lỗi: TimeoutError
+19:10:32  đang nối lại...
+19:10:37  nối lỗi: TimeoutError
+19:10:40  đang nối lại...
+19:10:45  nối lỗi: TimeoutError
+19:10:48  đang nối lại...
+19:10:53  nối lỗi: TimeoutError
+19:10:56  đang nối lại...
+19:11:02  nối lỗi: TimeoutError
+19:11:05  đang nối lại...
+19:11:10  nối lỗi: TimeoutError
+19:11:13  đang nối lại...
+19:11:18  nối lỗi: TimeoutError
+19:11:21  đang nối lại...
+19:11:26  nối lỗi: TimeoutError
+19:11:29  đang nối lại...
+19:11:34  nối lỗi: TimeoutError
+19:11:37  đang nối lại...
+19:11:42  nối lỗi: TimeoutError
+19:11:45  đang nối lại...
+19:11:50  nối lỗi: TimeoutError
+19:11:53  đang nối lại...
+19:11:58  nối lỗi: TimeoutError
+19:12:01  đang nối lại...
+19:12:07  nối lỗi: TimeoutError
+19:12:10  đang nối lại...
+19:12:15  nối lỗi: TimeoutError
+19:12:18  đang nối lại...
+19:12:23  nối lỗi: TimeoutError
+19:12:26  đang nối lại...
+19:12:31  nối lỗi: TimeoutError
+19:12:34  đang nối lại...
+19:12:39  nối lỗi: TimeoutError
+19:12:42  đang nối lại...
+19:12:47  nối lỗi: TimeoutError
+19:12:50  đang nối lại...
+19:12:55  nối lỗi: TimeoutError
+19:12:58  đang nối lại...
+19:13:03  nối lỗi: TimeoutError
+19:13:06  đang nối lại...
+19:13:12  nối lỗi: TimeoutError
+19:13:15  đang nối lại...
+19:13:20  nối lỗi: TimeoutError
+19:13:23  đang nối lại...
+19:13:28  nối lỗi: TimeoutError
+19:13:31  đang nối lại...
+19:13:36  nối lỗi: TimeoutError
+19:13:39  đang nối lại...
+19:13:44  nối lỗi: TimeoutError
+19:13:47  đang nối lại...
+19:13:52  nối lỗi: TimeoutError
+19:13:55  đang nối lại...
+19:14:00  nối lỗi: TimeoutError
+19:14:03  đang nối lại...
+19:14:09  nối lỗi: TimeoutError
+19:14:12  đang nối lại...
+19:14:17  nối lỗi: TimeoutError
+19:14:20  đang nối lại...
+19:14:25  nối lỗi: TimeoutError
+19:14:28  đang nối lại...
+19:14:33  nối lỗi: TimeoutError
+19:14:36  đang nối lại...
+19:14:41  nối lỗi: TimeoutError
+19:14:44  đang nối lại...
+19:14:49  nối lỗi: TimeoutError
+19:14:52  đang nối lại...
+19:14:57  nối lỗi: TimeoutError
+19:15:00  đang nối lại...
+19:15:05  nối lỗi: TimeoutError
+19:15:08  đang nối lại...
+19:15:14  nối lỗi: TimeoutError
+19:15:17  đang nối lại...
+19:15:22  nối lỗi: TimeoutError
+19:15:25  đang nối lại...
+19:15:30  nối lỗi: TimeoutError
+19:15:33  đang nối lại...
+19:15:38  nối lỗi: TimeoutError
+19:15:41  đang nối lại...
+19:15:46  nối lỗi: TimeoutError
+19:15:49  đang nối lại...
+19:15:54  nối lỗi: TimeoutError
+19:15:57  đang nối lại...
+19:16:02  nối lỗi: TimeoutError
+19:16:05  đang nối lại...
+19:16:10  nối lỗi: TimeoutError
+19:16:13  đang nối lại...
+19:16:19  nối lỗi: TimeoutError
+19:16:22  đang nối lại...
+19:16:27  nối lỗi: TimeoutError
+19:16:30  đang nối lại...
+19:16:35  nối lỗi: TimeoutError
+19:16:38  đang nối lại...
+19:16:43  nối lỗi: TimeoutError
+19:16:46  đang nối lại...
+19:16:51  nối lỗi: TimeoutError
+19:16:54  đang nối lại...
+19:16:59  nối lỗi: TimeoutError
+19:17:02  đang nối lại...
+19:17:07  nối lỗi: TimeoutError
+19:17:10  đang nối lại...
+19:17:15  nối lỗi: TimeoutError
+19:17:18  đang nối lại...
+19:17:24  nối lỗi: TimeoutError
+19:17:27  đang nối lại...
+19:17:32  nối lỗi: TimeoutError
+19:17:35  đang nối lại...
+19:17:40  nối lỗi: TimeoutError
+19:17:43  đang nối lại...
+19:17:48  nối lỗi: TimeoutError
+19:17:51  đang nối lại...
+19:17:56  nối lỗi: TimeoutError
+19:17:59  đang nối lại...
+19:18:04  nối lỗi: TimeoutError
+19:18:07  đang nối lại...
+19:18:12  nối lỗi: TimeoutError
+19:18:15  đang nối lại...
+19:18:21  nối lỗi: TimeoutError
+19:18:24  đang nối lại...
+19:18:29  nối lỗi: TimeoutError
+19:18:32  đang nối lại...
+19:18:37  nối lỗi: TimeoutError
+19:18:40  đang nối lại...
+19:18:45  nối lỗi: TimeoutError
+19:18:48  đang nối lại...
+19:18:53  nối lỗi: TimeoutError
+19:18:56  đang nối lại...
+19:19:01  nối lỗi: TimeoutError
+19:19:04  đang nối lại...
+19:19:09  nối lỗi: TimeoutError
+19:19:12  đang nối lại...
+19:19:17  nối lỗi: TimeoutError
+19:19:20  đang nối lại...
+19:19:26  nối lỗi: TimeoutError
+19:19:29  đang nối lại...
+19:19:34  nối lỗi: TimeoutError
+19:19:37  đang nối lại...
+19:19:42  nối lỗi: TimeoutError
+19:19:45  đang nối lại...
+19:19:50  nối lỗi: TimeoutError
+19:19:53  đang nối lại...
+19:19:58  nối lỗi: TimeoutError
+19:20:01  đang nối lại...
+19:20:06  nối lỗi: TimeoutError
+19:20:09  đang nối lại...
+19:20:14  nối lỗi: TimeoutError
+19:20:17  đang nối lại...
+19:20:21  đã kết nối 00:21:06:08:1C:D4
+19:20:22  cột: ms angle accel target gyro speed stepsL stepsR
+19:20:34  > drive=0.40
+19:20:37  > drive=0.80
+19:20:38  > turn=-100
+19:20:39  > turn=0
+19:20:39  > turn=100
+19:20:39  > turn=0
+19:20:40  > turn=100
+19:20:40  > turn=0
+19:20:41  > turn=100
+19:20:41  > turn=0
+19:20:44  > drive=1.20
+19:20:45  > drive=1.50
+19:20:47  > drive=1.50
+19:20:48  > drive=1.50
+19:20:48  > drive=1.50
+19:20:49  > drive=1.50
+19:20:49  > drive=1.50
+19:20:50  > drive=1.50
+19:20:51  > drive=1.50
+19:20:51  > drive=1.50
+19:20:51  > drive=1.50
+19:20:51  > drive=1.50
+19:20:52  > drive=1.50
+19:20:52  > drive=1.50
+19:20:53  > drive=1.10
+19:20:54  > drive=0.70
+19:20:54  > drive=0.30
+19:20:54  > drive=-0.10
+19:20:54  > drive=0.30
+19:20:55  > drive=0.70
+19:20:55  > drive=1.10
+19:20:55  > drive=1.50
+19:20:55  > drive=1.10
+19:20:56  > drive=0.70
+19:20:56  > drive=0.30
+19:20:56  > drive=-0.10
+19:20:56  > drive=-0.50
+19:20:56  > drive=-0.90
+19:20:56  > drive=-1.30
+19:20:57  > drive=-1.50
+19:20:57  > drive=-1.50
+19:21:04  > drive=-1.10
+19:21:05  > drive=-0.70
+19:21:05  > drive=-0.30
+19:21:06  > drive=0.10
+19:21:06  > drive=0.50
+19:21:07  > drive=0.90
+19:21:07  > drive=1.30
+19:21:08  > drive=1.50
+19:21:43  > drive=0.00
+19:21:43  > turn=0
+19:21:43  cột: ms angle accel target gyro speed stepsL stepsR pidout ctrlout
+19:21:43  > LOGMASK=1023.0000
+19:21:47  > drive=1.00
+19:21:54  > drive=0.00
+19:21:55  cột: ms angle accel target gyro speed stepsL stepsR
+19:21:55  > LOGMASK=255.0000
+19:22:29  cột: ms angle accel target gyro speed stepsL stepsR ctrlout drive
+19:22:29  > LOGMASK=17151.0000
+19:22:31  > drive=1.00
+19:22:35  > drive=0.00
+19:22:36  cột: ms angle accel target gyro speed stepsL stepsR
+19:22:36  > LOGMASK=255.0000
