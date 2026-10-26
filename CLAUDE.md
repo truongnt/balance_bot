@@ -1103,6 +1103,20 @@ killed. Earlier the same day two uploads to COM7 succeeded, which made the
 collision look harmless; it is not, and five consecutive attempts later that day
 all hung. Do not treat a lucky upload as evidence the port is unambiguous.
 
+**What actually cleared it, 2026-10-26, with no admin rights:**
+
+1. Device Manager → Ports → right-click the Bluetooth port holding the duplicate
+   number → **Disable device**. (Leave the one pointing at the robot's HC-05 alone.)
+2. **Unplug the USB cable, wait two seconds, plug it back in.**
+
+Both steps are needed. After the disable alone, avrdude stopped hanging but reported
+`unable to open port COM7` — a disabled device keeps the name claimed until the board
+re-enumerates and takes it. After the replug the upload went through on the first try.
+
+Note that `serial.tools.list_ports` reads the registry, so the disabled entry still shows
+up in any listing. A duplicate in the list is not by itself a problem; a duplicate that is
+*enabled* is.
+
 **The collision has to be removed, not retried around.** Settings → Bluetooth &
 devices → More Bluetooth settings → COM Ports tab → Remove the *Incoming* port
 holding the duplicate number. The incoming ports with an all-zero MAC

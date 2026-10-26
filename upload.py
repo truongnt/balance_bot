@@ -97,11 +97,16 @@ def main():
         return 1
     print(f"\nboard ở {port}")
     if dup:
-        print(f"[!] {port} BỊ TRÙNG TÊN với một cổng Bluetooth.")
-        print("    Mở tên này là hên xui, trúng cổng Bluetooth thì treo cứng.")
-        print("    Sửa triệt để: Settings → Bluetooth & devices → More Bluetooth")
-        print("    settings → tab COM Ports → Remove cổng Incoming trùng số.")
-        print("    (ĐỪNG xoá cổng trỏ tới HC-05 của robot.)")
+        print(f"[!] {port} trùng tên với một cổng Bluetooth.")
+        print("    Nếu cổng Bluetooth đó đang BẬT thì avrdude sẽ treo cứng khi mở.")
+        print("    Nếu đã disable rồi thì không sao — danh sách này đọc từ registry")
+        print("    nên vẫn hiện cả mục đã tắt.")
+        print("    Cách đã gỡ được (26/10/2026, không cần quyền admin):")
+        print("      1. Device Manager → Ports → chuột phải cổng Bluetooth trùng số")
+        print("         → Disable device   (ĐỪNG đụng cổng trỏ tới HC-05 của robot)")
+        print("      2. RÚT cáp USB, đợi 2 giây, CẮM LẠI")
+        print("    Chỉ disable mà không cắm lại thì vẫn lỗi 'unable to open port':")
+        print("    thiết bị đã tắt vẫn giữ liên kết tên cho tới khi board liệt kê lại.")
     if a.check:
         return 0
 
