@@ -3,6 +3,8 @@
 A self-balancing two-wheeled robot: Arduino Uno firmware plus a Python console that tunes
 it live over Bluetooth, so changing a gain never means plugging in a USB cable.
 
+<img src="docs/robot-front.jpg" width="330"> <img src="docs/robot-side.jpg" width="330">
+
 Measured on hardware, 2026-10-25, standing still with the position loop closed:
 
 | | |
@@ -29,6 +31,23 @@ measured-good set, and they are mirrored in `configs/balance_good.txt`.
 
 Wiring, power and A4988 Vref are in [`HUONG_DAN.md`](HUONG_DAN.md) (Vietnamese). Its PID
 section is obsolete — ignore it and use [`CLAUDE.md`](CLAUDE.md).
+
+<img src="docs/robot-top.jpg" width="330"> <img src="docs/robot-rear.jpg" width="330">
+
+Left: the HC-05 and the MPU-6050 sit on the upper deck, with the CNC shield and its two
+A4988 drivers directly underneath. Right: the battery hangs between the two motors, just
+above the yellow base plate.
+
+That battery position is deliberate and was nearly undone. The obvious instinct is to raise
+the centre of mass to slow the robot's fall, and moving the pack to the top deck was
+computed and **rejected**: for a rigid body the unstable pole is
+`p = sqrt(m*g*L / (I_cg + m*L^2))`, which is not monotonic in `L` but peaks at `L = k`, the
+radius of gyration. Raising the battery moves `L` to 50 mm and `k` to 53 mm, landing almost
+exactly on the worst case, and `p` gets *worse*, 9.0 to 9.6 rad/s. The point-mass formula
+`sqrt(g/L)` that suggests otherwise overstates `p` by 2.5x here and does not apply.
+
+The low mass is also what makes the detent problem below unavoidable, so the two are the
+same design decision seen from opposite sides.
 
 ## Quick start
 
@@ -137,6 +156,7 @@ analyze_log.py          Statistics and amplitude spectrum for logs/*_raw.tsv
 test_bt_parser.py       Host-side simulation of the BT command state machine
 check_defaults.py       Checks PARAMS table defaults against variable initialisers
 configs/                Tuned parameter sets, one command per line
+docs/                   Photographs of the build
 logs/                   Session logs; the measurements in CLAUDE.md cite these directly
 test_motor/ test_imu/   Standalone test sketches
 hc05_config/            One-shot sketch to change the HC-05 baud rate

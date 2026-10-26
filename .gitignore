@@ -15,3 +15,8 @@ build/
 # Windows
 Thumbs.db
 desktop.ini
+
+# Ảnh sản phẩm của bên bán (có watermark) — giữ lại để tham khảo, không
+# republish lên repo công khai.
+docs/vendor-*.png
+docs/vendor-*.jpg
