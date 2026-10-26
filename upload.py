@@ -63,7 +63,7 @@ def show(ports, board_dev):
 
 
 def upload(port, attempt):
-    """Biên dịch RỒI nạp, trong một lệnh, có hạn giờ cứng.
+    r"""Biên dịch RỒI nạp, trong một lệnh, có hạn giờ cứng.
 
     Dùng `compile --upload` chứ KHÔNG phải `upload` trần. `arduino-cli upload`
     không biên dịch — nó nạp lại bản build sẵn có trong cache, mà cache được
