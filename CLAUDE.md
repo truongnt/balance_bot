@@ -1085,6 +1085,30 @@ Two traps on this machine specifically:
 - A USB cable that charges but carries no data enumerates nothing at all, which looks
   identical to not being plugged in.
 
+**Use `upload.py`, not `arduino-cli upload` directly.**
+
+```powershell
+python upload.py            # finds the board by VID:PID, then uploads
+python upload.py --check    # just report the ports
+```
+
+It resolves the board by `VID:PID=0843:5740` instead of trusting a remembered
+COM number, warns when that COM name is duplicated, gives each attempt a hard
+timeout, and kills a stuck avrdude instead of waiting forever.
+
+That last part matters because **opening a Bluetooth virtual COM port with
+nothing connected blocks indefinitely** — no error, no timeout. On 2026-10-26
+both avrdude and a plain `serial.Serial.open()` hung on COM7 and had to be
+killed. Earlier the same day two uploads to COM7 succeeded, which made the
+collision look harmless; it is not, and five consecutive attempts later that day
+all hung. Do not treat a lucky upload as evidence the port is unambiguous.
+
+**The collision has to be removed, not retried around.** Settings → Bluetooth &
+devices → More Bluetooth settings → COM Ports tab → Remove the *Incoming* port
+holding the duplicate number. The incoming ports with an all-zero MAC
+(`LOCALMFG&0000\...000000000000_*`) are leftovers and safe to delete. Keep the
+outgoing one pointing at the robot's HC-05 (`...002106081CD4`).
+
 `arduino-cli board list` is still fine once you know the number. The helper sketches are
 separate Arduino projects — compile them by passing their folder
 (`...\robot_balance\test_motor`) instead.
