@@ -1,0 +1,21 @@
+18:03:29  đang nối lại...
+18:03:30  đã kết nối 00:21:06:08:1C:D4
+18:03:31  cột: ms angle accel target gyro speed stepsL stepsR
+18:03:42  14505�
+18:04:30  > drive=0.40
+18:04:31  > drive=0.80
+18:04:32  > drive=1.20
+18:04:34  > turn=100
+18:04:35  > drive=1.50
+18:04:40  > turn=200
+18:04:41  > turn=300
+18:04:42  > drive=1.50
+18:04:43  > turn=200
+18:04:44  > turn=100
+18:04:44  > turn=0
+18:04:45  �	J-3000	-8883	-5423
+18:04:54  im lặng 8s -> coi như đứt, nối lại
+18:04:54  đang nối lại...
+18:04:59  nối lỗi: TimeoutError
+18:05:02  đang nối lại...
+18:05:04  đã kết nối 00:21:06:08:1C:D4

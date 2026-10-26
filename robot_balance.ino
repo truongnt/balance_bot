@@ -742,7 +742,9 @@ void onParamSet(const char *name) {
   if      (strcmp(name, "DLPF") == 0) writeMPU(0x1A, dlpf_cfg);
   else if (strcmp(name, "LOGMASK") == 0) emitCols();
   else if (strcmp(name, "ARCH") == 0) { control_output = 0; pidI_angle = 0; pidI_vel = 0; }
-  else if (strcmp(name, "BIAS") == 0 || strcmp(name, "VDIR") == 0) pidI_vel = 0;
+  // VDIR dao DAU cua vel_err nen tich phan cu thanh sai dau -> bat buoc xoa.
+  // BIAS thi khong: no chi doi setpoint, xoa them trim chi gay giat (xem lenh S).
+  else if (strcmp(name, "VDIR") == 0) pidI_vel = 0;
 }
 
 // ============================================================
@@ -885,13 +887,17 @@ void parseCommand(char* buf) {
     driveAdd(0.0f); turnAdd(0);                        // ap tran moi ngay lap tuc
     Serial.print(F("> app_speed=")); Serial.println(app_speed, 2);
   }
-  else if (strcmp(buf, "S") == 0) { bt_drive = 0; bt_turn = 0; pidI_vel = 0;
+  // KHONG xoa pidI_vel: no la trim giu thang ma vong toc do da tich luy duoc.
+  // DO 26/10/2026: bam nut dung luc dang can bang -> target tut ngay mot luong
+  // Ki_vel*pidI_vel (ivel hay o +-500, tuc 0.5 do) -> robot troi roi nga, va
+  // phai hang chuc giay moi bo lai duoc vi Ki_vel=0.001 chay o 10Hz.
+  else if (strcmp(buf, "S") == 0) { bt_drive = 0; bt_turn = 0;
     noInterrupts(); pos_target = (stepsL + stepsR) / 2; interrupts();  // giu cho dang dung
     Serial.println(F("> STOP")); }
   else if (strcmp(buf, "P") == 0 || strcmp(buf, "GET") == 0) { printParams(); }
   // BIASADJ la lenh TUONG DOI nen khong nam trong bang
   else if (strcmp(buf, "BIASADJ") == 0) {
-    target_bias += val; pidI_vel = 0;
+    target_bias += val;   // khong xoa pidI_vel — xem ghi chu o lenh S
     Serial.print(F("> BIAS=")); Serial.println(target_bias, 4);
   }
   else if (strcmp(buf, "SAVE") == 0) {

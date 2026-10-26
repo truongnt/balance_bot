@@ -33,7 +33,9 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from robot_control import CONFIG_DIR, choose_device, load_config  # noqa: E402
 
+LOG_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logs")
 MM_PER_STEP = 0.177
+DEAD_AFTER = 8.0        # giây không nhận được byte nào -> coi như đứt
 PARAM_RE = re.compile(r"^([A-Z][A-Z0-9_]*)=(-?[\d.]+)(?:\s*\[(-?[\d.]+)\.\.(-?[\d.]+)\])?")
 REPLY_RE = re.compile(r"^> ([A-Z][A-Z0-9_]*)=(-?[\d.]+)")
 
@@ -46,7 +48,7 @@ PRIORITY = ["KP", "KD", "KI", "KPV", "KIV", "KPPOS", "VMAX", "DRVVEL",
 class Link:
     """Giữ socket RFCOMM, đọc nền, gom trạng thái cho giao diện."""
 
-    def __init__(self, mac):
+    def __init__(self, mac, log=True):
         self.mac = mac
         self.sock = None
         self.lock = threading.Lock()
@@ -62,6 +64,19 @@ class Link:
         self.origin = None       # mốc vị trí, để hiện quãng đường tương đối
         self.seq = 0             # tăng mỗi khi có gì đó mới, để client biết
         self.junk = 0            # số dòng bị bỏ vì vỡ/nhị phân
+        self.last_byte = 0.0     # byte cuối nhận được, cho watchdog
+        self.raw = None          # file .tsv 100Hz, THỨ để phân tích về sau
+        self.evt = None          # transcript sự kiện
+        self.logged = 0
+        self.logpath = None
+        if log:
+            os.makedirs(LOG_DIR, exist_ok=True)
+            stamp = time.strftime("%Y%m%d_%H%M%S")
+            self.logpath = os.path.join(LOG_DIR, f"robot_{stamp}_ui_raw.tsv")
+            self.raw = open(self.logpath, "w", encoding="utf-8", buffering=1 << 14)
+            self.evt = open(os.path.join(LOG_DIR, f"robot_{stamp}_ui.log"),
+                            "w", encoding="utf-8", buffering=1)
+            self.hdr_written = False
 
     # --- kết nối ---------------------------------------------------
     def connect(self):
@@ -73,6 +88,7 @@ class Link:
             self.sock = s
             self.connected = True
             self.buf = ""
+            self.last_byte = time.time()
         self.note(f"đã kết nối {self.mac}")
         # Hỏi ngay bộ cột và toàn bộ tham số: firmware chỉ tự phát #COLS lúc khởi
         # động và lúc đổi log_mask, nên nối vào giữa chừng là phải hỏi.
@@ -119,6 +135,8 @@ class Link:
             self.msgs.append((time.time(), text))
             del self.msgs[:-200]
             self.seq += 1
+        if self.evt:
+            self.evt.write(f"{time.strftime('%H:%M:%S')}  {text}\n")
 
     # --- vòng đọc --------------------------------------------------
     def reader(self):
@@ -135,7 +153,23 @@ class Link:
                 data = self.sock.recv(4096)
                 if not data:
                     raise OSError("peer closed")
+                self.last_byte = time.time()
             except socket.timeout:
+                # Liên kết RFCOMM có thể chết NỬA CHỪNG: Windows vẫn báo socket
+                # mở, recv chỉ timeout mãi, không hề ném lỗi. Không có watchdog
+                # thì connected ở True vĩnh viễn và nhánh nối lại không bao giờ
+                # chạy — đã đo: đứng im 0 mẫu suốt hơn 2 phút trong khi giao
+                # diện vẫn báo "đã nối".
+                if self.last_byte and time.time() - self.last_byte > DEAD_AFTER:
+                    self.note(f"im lặng {DEAD_AFTER:.0f}s -> coi như đứt, nối lại")
+                    with self.lock:
+                        self.connected = False
+                        try:
+                            self.sock.close()
+                        except OSError:
+                            pass
+                        self.sock = None
+                    self.last_byte = 0.0
                 continue
             except OSError:
                 with self.lock:
@@ -156,6 +190,10 @@ class Link:
             with self.lock:
                 self.cols = line.split()[1:]
                 self.seq += 1
+            if self.raw and self.hdr_written:
+                # Đổi bộ cột giữa phiên: chèn mốc, cùng quy ước với
+                # robot_control.py, để analyze_log.py cắt được thành khối.
+                self.raw.write(line + "\n")
             self.note("cột: " + " ".join(self.cols))
             return
 
@@ -170,6 +208,7 @@ class Link:
                     self.row = dict(zip(self.cols, vals))
                     self.samples += 1
                     self.last_rx = time.time()
+                self.log_row(line)
                 return
 
         if line[:1].isdigit() and "	" in line:
@@ -205,6 +244,32 @@ class Link:
             self.send("COLS")
         self.note(line)
 
+    def log_row(self, line):
+        """Ghi một mẫu telemetry thô.
+
+        Cột đầu của firmware là `ms` — mốc thời gian đọc BÊN TRONG robot. Cố ý
+        không thêm cột t_ms của PC: HC-05 trả dữ liệu theo cụm nên dấu thời gian
+        phía PC nhoè tới hàng chục ms, đã từng làm hiểu nhầm là vòng lặp trễ.
+        analyze_log.py lấy cột đầu làm trục thời gian nên khớp luôn.
+        """
+        if not self.raw:
+            return
+        if not self.hdr_written:
+            self.raw.write("\t".join(self.cols) + "\n")
+            self.hdr_written = True
+        self.raw.write(line + "\n")
+        self.logged += 1
+        if self.logged % 500 == 0:
+            self.raw.flush()
+
+    def close(self):
+        for f in (self.raw, self.evt):
+            if f:
+                try:
+                    f.flush(); f.close()
+                except OSError:
+                    pass
+
     # --- ảnh chụp trạng thái cho client ----------------------------
     def snapshot(self):
         with self.lock:
@@ -228,6 +293,8 @@ class Link:
                 "state": state,
                 "samples": self.samples,
                 "junk": self.junk,
+                "logged": self.logged,
+                "logpath": os.path.basename(self.logpath) if self.logpath else None,
                 "cols": list(self.cols),
                 "row": row,
                 "params": {k: dict(v) for k, v in self.params.items()},
@@ -380,7 +447,7 @@ kbd{background:#232b38;border:1px solid var(--line);border-radius:4px;padding:0 
   <span class="badge" id="state">…</span>
   <span style="color:var(--dim);font-size:12px" id="rate"></span>
   <span style="flex:1"></span>
-  <button class="stop" style="padding:6px 14px" onclick="cmd('S')">DỪNG (space)</button>
+  <button class="stop" style="padding:6px 14px" onclick="stop()">DỪNG (space)</button>
 </header>
 
 <div class="wrap">
@@ -408,14 +475,19 @@ kbd{background:#232b38;border:1px solid var(--line);border-radius:4px;padding:0 
     <div class="card">
       <h2>Lái</h2>
       <div class="pad">
-        <span></span><button class="go" onclick="cmd('F')">▲</button><span></span>
-        <button class="go" onclick="cmd('L')">◀</button>
-        <button class="stop" onclick="cmd('S')">■</button>
-        <button class="go" onclick="cmd('R')">▶</button>
-        <span></span><button class="go" onclick="cmd('B')">▼</button><span></span>
+        <span></span><button class="go" data-k="F" onclick="cmd('F')">▲</button><span></span>
+        <button class="go" data-k="L" onclick="cmd('L')">◀</button>
+        <button class="stop" data-k="S" onclick="stop()">■</button>
+        <button class="go" data-k="R" onclick="cmd('R')">▶</button>
+        <span></span><button class="go" data-k="B" onclick="cmd('B')">▼</button><span></span>
       </div>
-      <div class="hint">Phím mũi tên lái, <kbd>space</kbd> dừng.
-        Mỗi lần bấm cộng thêm <code>DRVSTEP</code>; giữ phím là tăng dần tới trần.</div>
+      <div class="hint">
+        <kbd>←</kbd><kbd>↑</kbd><kbd>↓</kbd><kbd>→</kbd> hoặc <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd>
+        để lái, <kbd>space</kbd> dừng. Nút sẽ sáng lên mỗi lần nhận phím.<br>
+        Mỗi lần bấm cộng thêm <code>DRVSTEP</code>; giữ phím là tăng dần tới trần
+        <code>DRVMAX × app_speed</code>.<br>
+        Nút dừng gửi <code>DRIVE 0</code> + <code>TURN 0</code>, cố tình
+        <b>không</b> gửi <code>S</code> — xem ghi chú trong mã nguồn.</div>
     </div>
 
     <div class="card">
@@ -451,15 +523,37 @@ const $ = s => document.querySelector(s);
 let S = {}, hist = [], builtParams = "", lastSeq = -1;
 
 async function cmd(c){ await fetch('/cmd',{method:'POST',body:c}); }
+
+// Dừng AN TOÀN. Cố tình không gửi 'S': firmware (bản trước 26/10) xoá pidI_vel
+// trong lệnh S, mà pidI_vel chính là trim giữ thăng bằng — xoá là target tụt
+// ~0.5 độ tức thì và robot trôi rồi ngã. DRIVE 0 / TURN 0 dừng đúng như vậy mà
+// không đụng tới tích phân, nên chạy được với cả firmware cũ lẫn mới.
+async function stop(){ await cmd('DRIVE 0'); await cmd('TURN 0'); }
 async function cfg(n){ await fetch('/cfg',{method:'POST',body:n}); }
 
 // ── bàn phím ────────────────────────────────────────────────────
-const KEYS = {ArrowUp:'F', ArrowDown:'B', ArrowLeft:'L', ArrowRight:'R', ' ':'S'};
+const KEYS = {ArrowUp:'F', ArrowDown:'B', ArrowLeft:'L', ArrowRight:'R', ' ':'S',
+              w:'F', s:'B', a:'L', d:'R', W:'F', S:'B', A:'L', D:'R'};
 addEventListener('keydown', e => {
-  if (e.target.tagName === 'INPUT') return;
+  if (e.target.tagName === 'INPUT') return;      // đang gõ lệnh thì bỏ qua
   const c = KEYS[e.key];
-  if (c) { e.preventDefault(); cmd(c); }
+  if (!c) return;
+  e.preventDefault();                            // chặn mũi tên cuộn trang
+  flash(c);
+  c === 'S' ? stop() : cmd(c);
 });
+
+// Bấm chuột xong thì nhả tiêu điểm khỏi nút. Nếu không, nút giữ tiêu điểm và
+// phím mũi tên trông như không ăn — thực ra vẫn ăn, chỉ là không ai biết.
+addEventListener('click', e => { if (e.target.tagName === 'BUTTON') e.target.blur(); });
+
+// Phản hồi thị giác: sáng đúng nút tương ứng, để biết bàn phím đang hoạt động.
+function flash(c){
+  const b = document.querySelector(`[data-k="${c}"]`);
+  if (!b) return;
+  b.style.background = c === 'S' ? '#6b2b2b' : '#2f6fb8';
+  setTimeout(() => { b.style.background = ''; }, 120);
+}
 $('#raw').addEventListener('keydown', e => {
   if (e.key === 'Enter' && e.target.value.trim()) { cmd(e.target.value); e.target.value=''; }
 });
@@ -609,6 +703,8 @@ def main():
     ap.add_argument("mac", nargs="?", help="MAC của HC-05")
     ap.add_argument("--port", type=int, default=8777)
     ap.add_argument("--no-browser", action="store_true")
+    ap.add_argument("--no-log", action="store_true",
+                    help="không ghi logs/*_ui_raw.tsv")
     a = ap.parse_args()
 
     mac = choose_device(a.mac)
@@ -616,7 +712,7 @@ def main():
         print("Không chọn được thiết bị.")
         return 1
 
-    link = Link(mac)
+    link = Link(mac, log=not a.no_log)
     Handler.link = link
     threading.Thread(target=link.reader, daemon=True).start()
 
