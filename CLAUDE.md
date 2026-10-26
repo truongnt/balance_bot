@@ -294,7 +294,7 @@ and mirrors the few it shows in the telemetry panel (`_PANEL_FIELDS`).
 |---|---|---|---|---|
 | `Kp_angle` | 80 | `kp 80` | — | Inner P. **`arch 1` needs ~45**, not 80 — different units entirely |
 | `Ki_angle` | 0 | `ki 0` | — | Inner I |
-| `Kd_angle` | 12 | `kd 12` | — | Inner D. **`arch 1` needs ~2.5**, not 12 |
+| `Kd_angle` | 12 | `kd 6` | — | Inner D. **`arch 1` measured best at 6** (2026-10-26): σ 0.051° against 0.111° at 2.5, and it kills the 0.6 Hz limit cycle. 10 is unstable |
 | `Kp_vel` | 0.008 | `kpv 0.008` | — | Outer P — keep low, diverges fast |
 | `Ki_vel` | 0.001 | `kiv 0.001` | — | Outer I |
 | `target_bias` | 0 | `bias 1.4` / `biasadj +0.3` | — | CG offset (degrees forward lean) |
@@ -1020,6 +1020,34 @@ because `app_speed` was 0.40 at the time and the ceiling is `DRVMAX 1.5 x 0.4 = 
   gaps between them and glue into `? FBLRSSGIHJ393S`. The timing rules assume the firmware
   is actually running. This is cosmetic, but it is why a stalled board produces a screen of
   `?` lines rather than silence.
+
+### Push damping measured at last — `KD 6`, not 2.5, 2026-10-26
+The oldest open complaint on this robot was that it gets shoved and drifts. The derivation
+put the damping ratio near ζ ≈ 0.17 at `kd 2.5`, which is exactly what that looks like, but
+it had never been tested. Three values, forty seconds each, through the browser panel with
+no reflashing:
+
+| `KD` | `angle` σ | \|angle\| max | `speed` σ | drift | spectral peak |
+|---|---|---|---|---|---|
+| 2.5 | 0.111° | 1.46° | 139 | 1.7 cm | **0.6 Hz** |
+| **6.0** | **0.051°** | **0.72°** | **38** | **−0.4 cm** | 6.6 Hz |
+| 10.0 | 5.771° | 17.76° | 1261 | — | **fell after 11 s** |
+
+`kd 6` is better on every measure at once: half the angle deviation, half the peak tilt, a
+quarter of the speed activity, and drift essentially gone.
+
+The spectrum column is the interesting one. At `kd 2.5` the peak sits at **0.6 Hz** — the
+same outer-velocity-loop oscillation recorded on 2026-10-22 — and at `kd 6` it disappears
+entirely, leaving only motor noise above 6 Hz. So that 0.6 Hz limit cycle was never a
+velocity-loop tuning problem; it was the inner loop being underdamped, and the ζ ≈ 0.17
+estimate was right all along.
+
+`kd 10` is past the edge. Do not split the difference blindly: the useful band is narrow.
+
+**Restore `KD` before the link can drop.** The sweep ended by sending `KD 2.5`, the
+Bluetooth link dropped in the same second, and the robot was left holding `KD 10` in RAM —
+an unstable value. EEPROM still held the old one, so a power cycle recovered it, but a
+sweep script should write the safe value *and confirm the echo* before moving on.
 
 ### Still unmeasured
 - **Push recovery.** Still the oldest open complaint ("tác động vào là trôi luôn"). With

@@ -20,7 +20,13 @@ ARCH 1
 # kd 2.5 cho ζ≈0.7. KHÔNG chép tỉ lệ Kd/Kp của B-ROBOT (≈15): robot đó cao hơn,
 # cực chậm hơn; áp vào đây ra kd 180, đẩy cực chậm nhất về −0.11 rad/s (9 giây).
 KP 45
-KD 2.5
+# KD 6, KHONG phai 2.5. DO 26/10/2026, ba muc moi muc 40 giay:
+#   kd 2.5 -> angle sigma 0.111, |ang|max 1.46, speed sigma 139, dinh pho 0.6Hz
+#   kd 6.0 -> angle sigma 0.051, |ang|max 0.72, speed sigma  38, dinh pho 6.6Hz
+#   kd 10  -> NGA sau 11 giay
+# 0.6Hz o kd 2.5 la dao dong vong toc do vong ngoai (ghi nhan tu 22/10);
+# kd 6 lam no bien mat han. Khop voi tinh toan zeta ~ 0.17 la thieu giam chan.
+KD 6
 KI 0
 
 # ── Vòng giữa: vận tốc, 10Hz ──
