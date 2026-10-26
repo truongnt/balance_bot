@@ -418,6 +418,18 @@ Three things that are easy to get wrong, all of them found by running it:
 - **Slider drags are coalesced over 150 ms.** Sending every `input` event floods the uplink
   and pushes telemetry out of the 115200-baud budget.
 
+**Turning is a rate command, so the panel pulses it.** `L`/`R` set a turn *rate* that
+holds until something changes it, so one keypress spins the robot until you stop it —
+`TURN 200` held for 3 s was a full quarter turn. The pad sends `TURN n`, then `TURN 0`
+after an adjustable interval, which makes one press a repeatable turn *amount*. 400 ms at
+`TRNSTEP 100` is roughly 6 degrees, from the measured 220.9 mm of wheel differential per
+quarter turn at a 140.6 mm track. Drive is deliberately left latching, because driving is
+something you want to hold.
+
+**The stop button does not send `S`.** It sends `DRIVE 0` + `TURN 0`. See the note under
+the parameter table about `S` clearing the level trim; the panel's version works correctly
+on firmware from either side of that fix.
+
 **One connection at a time.** The HC-05 accepts a single RFCOMM link, so `robot_ui.py`,
 `robot_control.py`, `robot_auto.py` and a phone are mutually exclusive. Two of them running
 at once is not a clean failure: both appear to work while the stream is split between them
@@ -629,7 +641,15 @@ Use `analyze_log.py` to reproduce: it prints per-column stats, the amplitude spe
 ```powershell
 python analyze_log.py                    # newest logs\*_raw.tsv
 python analyze_log.py logs\<file>.tsv
+python analyze_log.py --last             # the most recent segment, not the longest
 ```
+
+**Use `--last` while tuning.** By default the tool analyses the *longest* contiguous block,
+which is right when dissecting a finished session but wrong live: after a reboot or a
+parameter change the segment you care about is the one just recorded, and it is usually
+shorter than what came before. On 2026-10-26 the default picked a 7495-sample block from
+before a reboot and reported `gyro` averaging −10.9 °/s, while the 3996 samples after it
+averaged +1.2 — opposite conclusions from the same file.
 
 ### Loop timing — 2026-10-21, over USB
 With the `ms` column, consecutive ticks read 5483 / 5493 / 5504 ms — a solid 100Hz. The

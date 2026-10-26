@@ -4,6 +4,7 @@ Phân tích file telemetry thô (logs/*_raw.tsv) do robot_control.py ghi.
 
     python analyze_log.py logs\robot_20261021_162444_raw.tsv
     python analyze_log.py                    # tự lấy file _raw.tsv mới nhất
+    python analyze_log.py --last             # chỉ đoạn mới nhất (đang chỉnh trực tiếp)
 
 In ra: thống kê từng cột, phổ tần số của angle/accel/gyro, và drift CF-vs-accel.
 Phổ tần số là thứ để trả lời "robot rung ở tần số nào" — câu mà log tóm tắt
@@ -15,12 +16,16 @@ import numpy as np
 LOGDIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logs")
 
 
-def load(path):
+def load(path, last=False):
     """Đọc .tsv. Bộ cột có thể đổi giữa phiên qua dòng mốc '#COLS ...'.
 
-    Mỗi lần đổi là một khối riêng với header riêng. Trả về khối DÀI NHẤT —
-    đó gần như luôn là phần đáng phân tích, còn khối đầu thường chỉ là vài
-    trăm mẫu trước khi cấu hình kịp áp dụng.
+    Mỗi lần đổi là một khối riêng với header riêng. Mặc định trả về khối DÀI
+    NHẤT — gần như luôn là phần đáng phân tích khi mổ xẻ một buổi đã xong, còn
+    khối đầu thường chỉ là vài trăm mẫu trước khi cấu hình kịp áp dụng.
+
+    last=True thì lấy khối CUỐI CÙNG. Dùng khi đang chỉnh trực tiếp: sau một lần
+    Arduino khởi động lại hay đổi tham số, đoạn đáng xem là đoạn vừa ghi, mà nó
+    thường ngắn hơn đoạn trước — chọn theo độ dài là lấy nhầm dữ liệu cũ.
     """
     with open(path, encoding="utf-8") as f:
         lines = [l.rstrip("\n") for l in f if l.strip()]
@@ -50,7 +55,7 @@ def load(path):
     if len(blocks) > 1:
         print("  [!] bộ cột đổi giữa phiên — các khối: "
               + ", ".join(f"{len(r)} mẫu/{len(h)} cột" for h, r in blocks))
-    hdr, rows = max(blocks, key=lambda b: len(b[1]))
+    hdr, rows = blocks[-1] if last else max(blocks, key=lambda b: len(b[1]))
     return hdr, np.array(rows, dtype=float)
 
 
@@ -66,15 +71,17 @@ def spectrum(x, fs, hp=0.5):
 
 
 def main():
-    if len(sys.argv) > 1:
-        path = sys.argv[1]
+    args = [a for a in sys.argv[1:] if not a.startswith("-")]
+    last = "--last" in sys.argv
+    if args:
+        path = args[0]
     else:
         files = sorted(glob.glob(os.path.join(LOGDIR, "*_raw.tsv")))
         if not files:
             print("Không có file *_raw.tsv nào trong logs/"); return 1
         path = files[-1]
 
-    hdr, D = load(path)
+    hdr, D = load(path, last=last)
     if D.size == 0:
         print("File rỗng hoặc sai định dạng."); return 1
 
@@ -91,8 +98,8 @@ def main():
             if len(g) < 2:
                 continue
             print(f"    đoạn {i}: {len(g):5d} mẫu, {(T[g[-1]]-T[g[0]])/1000:5.1f}s")
-        g = max(groups, key=len)
-        print(f"    → phân tích đoạn dài nhất ({len(g)} mẫu)\n")
+        g = groups[-1] if last else max(groups, key=len)
+        print(f"    → phân tích đoạn {'cuối' if last else 'dài nhất'} ({len(g)} mẫu)\n")
         T, A = T[g], A[g]
 
     dur = (T[-1] - T[0]) / 1000.0

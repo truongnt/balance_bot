@@ -476,9 +476,9 @@ kbd{background:#232b38;border:1px solid var(--line);border-radius:4px;padding:0 
       <h2>Lái</h2>
       <div class="pad">
         <span></span><button class="go" data-k="F" onclick="cmd('F')">▲</button><span></span>
-        <button class="go" data-k="L" onclick="cmd('L')">◀</button>
+        <button class="go" data-k="L" onclick="turn(-1)">◀</button>
         <button class="stop" data-k="S" onclick="stop()">■</button>
-        <button class="go" data-k="R" onclick="cmd('R')">▶</button>
+        <button class="go" data-k="R" onclick="turn(+1)">▶</button>
         <span></span><button class="go" data-k="B" onclick="cmd('B')">▼</button><span></span>
       </div>
       <div class="hint">
@@ -488,6 +488,17 @@ kbd{background:#232b38;border:1px solid var(--line);border-radius:4px;padding:0 
         <code>DRVMAX × app_speed</code>.<br>
         Nút dừng gửi <code>DRIVE 0</code> + <code>TURN 0</code>, cố tình
         <b>không</b> gửi <code>S</code> — xem ghi chú trong mã nguồn.</div>
+      <div class="row" style="margin-top:8px;align-items:center">
+        <span style="font-size:12px;color:var(--dim)">nhịp rẽ mỗi lần bấm</span>
+        <input type="number" id="turnms" value="400" min="50" max="3000" step="50"
+          style="width:76px;background:#0e1117;color:var(--fg);border:1px solid var(--line);
+                 border-radius:6px;padding:5px;font:12px ui-monospace,monospace">
+        <span style="font-size:12px;color:var(--dim)">ms</span>
+      </div>
+      <div class="hint">Lệnh <code>L</code>/<code>R</code> của firmware đặt <b>tốc độ</b> rẽ
+        và giữ mãi, nên một lần bấm là xoay không dừng. Ở đây mỗi lần bấm là một
+        <b>xung</b>: rẽ đúng nhịp này rồi tự về 0. 400ms ở <code>TRNSTEP 100</code>
+        ≈ 6°. Muốn rẽ gắt hơn thì tăng nhịp, hoặc tăng <code>TRNSTEP</code> bên dưới.</div>
     </div>
 
     <div class="card">
@@ -528,7 +539,22 @@ async function cmd(c){ await fetch('/cmd',{method:'POST',body:c}); }
 // trong lệnh S, mà pidI_vel chính là trim giữ thăng bằng — xoá là target tụt
 // ~0.5 độ tức thì và robot trôi rồi ngã. DRIVE 0 / TURN 0 dừng đúng như vậy mà
 // không đụng tới tích phân, nên chạy được với cả firmware cũ lẫn mới.
-async function stop(){ await cmd('DRIVE 0'); await cmd('TURN 0'); }
+async function stop(){ turnT && clearTimeout(turnT); await cmd('DRIVE 0'); await cmd('TURN 0'); }
+
+// Rẽ theo XUNG, không theo mức.
+// L/R của firmware đặt TỐC ĐỘ rẽ và giữ nguyên tới khi có lệnh khác, nên một
+// lần bấm là robot xoay mãi — đo 26/10: TURN 200 trong 3s đã quay đủ 1/4 vòng.
+// Ở đây bấm một cái = rẽ một lượng rồi tự về 0, nên góc rẽ tỉ lệ với thời gian
+// xung và lặp lại được. Ước lượng: TRNSTEP 100 trong 400ms ≈ 6° (từ số đo
+// 220.9mm lệch bánh cho 90°, với khoảng cách hai bánh 140.6mm).
+let turnT = null;
+async function turn(dir){
+  const step = (S.params?.TRNSTEP?.value) || 100;
+  const ms = Math.max(50, +document.getElementById('turnms').value || 400);
+  if (turnT) clearTimeout(turnT);
+  await cmd('TURN ' + (dir * step));
+  turnT = setTimeout(() => { cmd('TURN 0'); turnT = null; }, ms);
+}
 async function cfg(n){ await fetch('/cfg',{method:'POST',body:n}); }
 
 // ── bàn phím ────────────────────────────────────────────────────
@@ -540,7 +566,10 @@ addEventListener('keydown', e => {
   if (!c) return;
   e.preventDefault();                            // chặn mũi tên cuộn trang
   flash(c);
-  c === 'S' ? stop() : cmd(c);
+  if (c === 'S') stop();
+  else if (c === 'L') turn(-1);
+  else if (c === 'R') turn(+1);
+  else cmd(c);
 });
 
 // Bấm chuột xong thì nhả tiêu điểm khỏi nút. Nếu không, nút giữ tiêu điểm và
