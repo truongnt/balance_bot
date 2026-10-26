@@ -1,0 +1,17 @@
+# Khoá, token — KHÔNG BAO GIỜ commit
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+
+# Arduino CLI build
+build/
+*.hex
+*.elf
+
+# Windows
+Thumbs.db
+desktop.ini

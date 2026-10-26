@@ -1,0 +1,393 @@
+/*
+ * ============================================================
+ *   ROBOT 2 BÁNH TỰ CÂN BẰNG
+ * ============================================================
+ *  Phần cứng:
+ *    - Arduino Uno
+ *    - CNC Shield v3
+ *    - 2x A4988 Driver
+ *    - 2x NEMA 17 (200 steps/rev)
+ *    - 2x Bánh xe đường kính 92mm
+ *    - MPU-6050 (GY-521)
+ *
+ *  Sơ đồ chân CNC Shield:
+ *    Motor trái  (X-axis): STEP=D2, DIR=D5
+ *    Motor phải  (Y-axis): STEP=D3, DIR=D6
+ *    Enable tất cả       : D8 (LOW = bật)
+ *    MPU-6050 SDA        : A4
+ *    MPU-6050 SCL        : A5
+ *    MPU-6050 VCC        : 3.3V hoặc 5V (GY-521 có LDO)
+ *    MPU-6050 GND        : GND
+ *    MPU-6050 AD0        : GND (địa chỉ 0x68)
+ *
+ *  Cài Microstepping trên CNC Shield (jumper vật lý):
+ *    1/8  step : MS1=ON, MS2=ON, MS3=OFF  (khuyến nghị)
+ *    1/16 step : MS1=ON, MS2=ON, MS3=ON
+ *    Full step : không cắm jumper
+ *
+ *  Thư viện cần cài (Arduino Library Manager):
+ *    - Wire (có sẵn)
+ *
+ *  Hướng dẫn tinh chỉnh PID:
+ *    1. Bắt đầu Kp=10, Ki=0, Kd=0
+ *    2. Tăng Kp cho đến khi robot lắc nhẹ quanh điểm cân bằng
+ *    3. Tăng Kd để giảm lắc (dao động)
+ *    4. Tăng Ki nhỏ để bù sai lệch tĩnh (nếu robot cứ trôi 1 hướng)
+ *    5. Điều chỉnh TARGET_ANGLE nếu robot nghiêng về phía trước/sau
+ * ============================================================
+ */
+
+#include <Wire.h>
+
+// ============================================================
+// CẤU HÌNH PHẦN CỨNG
+// ============================================================
+
+// Chân motor (CNC Shield)
+#define STEP_L      2     // Motor trái - STEP (X-axis)
+#define STEP_R      3     // Motor phải - STEP (Y-axis)
+#define DIR_L       5     // Motor trái - DIR  (X-axis)
+#define DIR_R       6     // Motor phải - DIR  (Y-axis)
+#define ENABLE_PIN  8     // Enable tất cả driver (LOW = bật)
+
+// MPU-6050
+#define MPU_ADDR    0x68  // Địa chỉ I2C (AD0=GND)
+
+// ============================================================
+// THAM SỐ PID - ĐIỀU CHỈNH TẠI ĐÂY
+// ============================================================
+float Kp = 100.0;         // 50 qua yeu (ko can duoc), 150 overshoot - 100 la trung diem
+float Ki = 0.0;           // Tat Ki - chinh sau khi co ban bang duoc
+float Kd = 15.0;          // Kd cao (35) phanh qua manh tai zero-crossing, P bi luat mat
+
+// Góc cân bằng mục tiêu (độ) - điều chỉnh nếu robot lệch khi đứng yên
+float TARGET_ANGLE = -0.15;
+
+// Góc an toàn: nếu vượt quá sẽ tắt motor
+#define FALL_ANGLE  30.0
+
+// ============================================================
+// CẤU HÌNH MOTOR
+// ============================================================
+#define MICROSTEP   8     // Phu hop voi jumper: chi cam M0+M1 (MS3=OFF) = 1/8 step
+                          // 1/8  step: MS1=ON, MS2=ON, MS3=OFF (2 jumper M0, M1)
+                          // 1/16 step: MS1=ON, MS2=ON, MS3=ON  (ca 3 jumper)
+#define STEPS_REV   200   // NEMA17: 200 full steps/vòng
+#define STEPS_FULL  (STEPS_REV * MICROSTEP)  // = 3200 microsteps/vòng
+
+// Tốc độ motor: steps/giây
+#define MAX_SPEED   8000  // Tối đa (steps/s) — tăng gấp đôi vì 1/16 step
+#define DEAD_BAND   10    // Ngung chet nho - tranh dao dong khi motor rung
+
+// ============================================================
+// BỘ LỌC COMPLEMENTARY
+// ============================================================
+// alpha gần 1.0 → tin gyro nhiều hơn (ít noise nhưng drift dài hạn)
+// alpha gần 0.9 → tin accel nhiều hơn (bù drift nhưng nhiều noise)
+#define ALPHA       0.98
+
+// ============================================================
+// BIẾN TOÀN CỤC
+// ============================================================
+
+// Góc nghiêng (độ)
+float angle       = 0.0;
+float gyroBias    = 0.0;   // Calibration offset
+
+// PID
+float pidError     = 0.0;
+float pidLastError = 0.0;
+float pidIntegral  = 0.0;
+float pidOutput    = 0.0;
+
+// Timer
+unsigned long lastLoopTime = 0;
+
+// Stepper timing (microseconds)
+unsigned long lastStepTimeL = 0;
+unsigned long lastStepTimeR = 0;
+long stepIntervalL = 0;   // 0 = dừng
+long stepIntervalR = 0;
+bool stepStateL    = false;
+bool stepStateR    = false;
+
+// Trạng thái ngã
+bool fallen = false;
+
+// ============================================================
+// SETUP
+// ============================================================
+void setup() {
+  Serial.begin(115200);
+  Serial.println(F("=== ROBOT TU CAN BANG ==="));
+
+  // Cấu hình chân motor
+  pinMode(STEP_L,     OUTPUT);
+  pinMode(STEP_R,     OUTPUT);
+  pinMode(DIR_L,      OUTPUT);
+  pinMode(DIR_R,      OUTPUT);
+  pinMode(ENABLE_PIN, OUTPUT);
+
+  // Tắt motor trước khi khởi động
+  disableMotors();
+
+  // Khởi động MPU-6050
+  initMPU();
+
+  // Calibrate gyroscope bias (giữ robot yên ~2 giây)
+  Serial.println(F("Calibrating... giu robot yen!"));
+  delay(500);
+  calibrateGyro();
+  Serial.println(F("Calibration XONG!"));
+
+  // Khởi tạo góc ban đầu từ accelerometer
+  int16_t ax, ay, az, gx, gy, gz;
+  readMPU(&ax, &ay, &az, &gx, &gy, &gz);
+  Serial.print(F("RAW ax=")); Serial.print(ax);
+  Serial.print(F(" ay="));    Serial.print(ay);
+  Serial.print(F(" az="));    Serial.println(az);
+  angle = calcAccelAngle(ay, az);
+  pidLastError = TARGET_ANGLE - angle;  // Init để tránh derivative spike vòng đầu
+
+  Serial.print(F("Goc ban dau: "));
+  Serial.print(angle);
+  Serial.println(F(" do"));
+
+  // Bật motor
+  enableMotors();
+
+  lastLoopTime = micros();
+  Serial.println(F("Robot bat dau!"));
+  Serial.println(F("Angle\tAccel\tGyroRate\tPID_Out\tSpeed"));
+}
+
+// ============================================================
+// LOOP CHÍNH
+// ============================================================
+void loop() {
+  unsigned long now = micros();
+  float dt = (float)(now - lastLoopTime) / 1000000.0f;
+
+  // Vòng điều khiển chạy ở ~200Hz (mỗi 5ms)
+  if (dt < 0.005f) {
+    runSteppers();  // Tiếp tục tạo xung bước trong thời gian chờ
+    return;
+  }
+  lastLoopTime = now;
+
+  // --- 1. Đọc MPU-6050 ---
+  int16_t ax, ay, az, gx, gy, gz;
+  readMPU(&ax, &ay, &az, &gx, &gy, &gz);
+
+  // --- 2. Tính góc nghiêng ---
+  float gyroRate   = ((float)gx - gyroBias) / 131.0f;  // Y truc dung -> gx do toc do xoay tien/lui
+  float accelAngle = calcAccelAngle(ay, az);            // deg
+
+  // Complementary filter
+  angle = ALPHA * (angle + gyroRate * dt) + (1.0f - ALPHA) * accelAngle;
+
+  // --- 3. Kiểm tra an toàn ---
+  if (abs(angle) > FALL_ANGLE) {
+    if (!fallen) {
+      fallen = true;
+      disableMotors();
+      stopMotors();
+      pidIntegral = 0;
+      Serial.println(F("CANH BAO: ROBOT NGa! Motor tat."));
+    }
+  }
+
+  // Phục hồi: kiểm tra riêng, ngoài khối ngã
+  // (không thể có angle>30 và angle<5 cùng lúc nên phải tách ra)
+  if (fallen) {
+    // Phục hồi khi: góc nhỏ VÀ tốc độ góc nhỏ (robot gần đứng yên)
+    if (abs(angle) < 2.0f && abs(gyroRate) < 30.0f) {
+      fallen = false;
+      enableMotors();
+      pidIntegral  = 0;
+      pidLastError = TARGET_ANGLE - angle;
+      Serial.println(F("Phuc hoi - Motor bat lai."));
+    } else {
+      return;  // Vẫn đang ngã hoặc đang di chuyển nhanh
+    }
+  }
+
+  // --- 4. PID Controller ---
+  pidError = TARGET_ANGLE - angle;
+
+  // Tích phân với anti-windup
+  pidIntegral += pidError * dt;
+  pidIntegral  = constrain(pidIntegral, -200.0f, 200.0f);
+
+  // D-term: dùng trực tiếp gyroRate thay vì sai phân góc
+  // gyroRate = d(angle)/dt  →  d(error)/dt = -gyroRate
+  // Ít nhiễu hơn sai phân nhiều lần vì gyro đo trực tiếp tốc độ góc
+  float pidDerivative = -gyroRate;
+
+  pidOutput = Kp * pidError + Ki * pidIntegral + Kd * pidDerivative;
+  pidOutput = constrain(pidOutput, (float)-MAX_SPEED, (float)MAX_SPEED);
+
+  // --- 5. Điều khiển motor ---
+  setMotorSpeed(pidOutput);
+
+  // --- Debug Serial (có thể comment out để tăng tốc) ---
+  static uint8_t debugCount = 0;
+  if (++debugCount >= 20) {  // In mỗi 20 vòng = ~10Hz (giam tan suat de bot anh huong)
+    debugCount = 0;
+    Serial.print(angle, 2);
+    Serial.print(F("\t"));
+    Serial.print(accelAngle, 2);  // De so sanh dau voi angle khi nghieng robot
+    Serial.print(F("\t"));
+    Serial.print(gyroRate, 1);    // Toc do goc (°/s) — giup thay ro nhieu
+    Serial.print(F("\t"));
+    Serial.print(pidOutput, 1);
+    Serial.print(F("\t"));
+    // Step rate thuc te = 1/(2*toggle_interval) vi 2 toggle = 1 step
+    Serial.println(stepIntervalL > 0 ? 500000L / stepIntervalL : 0);
+  }
+
+  // Chạy stepper ngay sau khi tính xong
+  runSteppers();
+}
+
+// ============================================================
+// KHỞI TẠO MPU-6050
+// ============================================================
+void initMPU() {
+  Wire.begin();
+  Wire.setClock(400000);  // Fast mode I2C 400kHz
+
+  // Wake up
+  writeRegMPU(0x6B, 0x00);
+
+  // Gyro range ±250°/s → scale = 131 LSB/(°/s)
+  writeRegMPU(0x1B, 0x00);
+
+  // Accel range ±2g → scale = 16384 LSB/g
+  writeRegMPU(0x1C, 0x00);
+
+  // Digital Low Pass Filter: ~44Hz bandwidth
+  writeRegMPU(0x1A, 0x03);
+
+  delay(100);
+  Serial.println(F("MPU-6050 khoi dong OK"));
+}
+
+void writeRegMPU(uint8_t reg, uint8_t val) {
+  Wire.beginTransmission(MPU_ADDR);
+  Wire.write(reg);
+  Wire.write(val);
+  Wire.endTransmission(true);
+}
+
+// ============================================================
+// ĐỌC DỮ LIỆU MPU-6050
+// ============================================================
+void readMPU(int16_t *ax, int16_t *ay, int16_t *az,
+             int16_t *gx, int16_t *gy, int16_t *gz) {
+  Wire.beginTransmission(MPU_ADDR);
+  Wire.write(0x3B);  // Bắt đầu từ ACCEL_XOUT_H
+  Wire.endTransmission(false);
+  Wire.requestFrom((uint8_t)MPU_ADDR, (uint8_t)14, (uint8_t)true);
+
+  *ax = (int16_t)(Wire.read() << 8 | Wire.read());
+  *ay = (int16_t)(Wire.read() << 8 | Wire.read());
+  *az = (int16_t)(Wire.read() << 8 | Wire.read());
+  Wire.read(); Wire.read();  // Bỏ qua nhiệt độ
+  *gx = (int16_t)(Wire.read() << 8 | Wire.read());
+  *gy = (int16_t)(Wire.read() << 8 | Wire.read());
+  *gz = (int16_t)(Wire.read() << 8 | Wire.read());
+}
+
+// ============================================================
+// CALIBRATE GYRO BIAS
+// ============================================================
+void calibrateGyro() {
+  const int SAMPLES = 500;
+  long sum = 0;
+  for (int i = 0; i < SAMPLES; i++) {
+    int16_t ax, ay, az, gx, gy, gz;
+    readMPU(&ax, &ay, &az, &gx, &gy, &gz);
+    sum += gx;
+    delay(4);
+  }
+  gyroBias = (float)sum / SAMPLES;
+  Serial.print(F("Gyro bias: "));
+  Serial.println(gyroBias, 3);
+}
+
+// ============================================================
+// TÍNH GÓC TỪ ACCELEROMETER
+// ============================================================
+// Y la truc thang dung (+1g khi dung thang) — dung atan2(az, ay)
+float calcAccelAngle(int16_t ay, int16_t az) {
+  return atan2f((float)-ay, (float)az) * 57.2957795f;
+}
+
+// ============================================================
+// ĐIỀU KHIỂN TỐC ĐỘ MOTOR
+// ============================================================
+void setMotorSpeed(float speed) {
+  // speed > 0 → tiến, speed < 0 → lùi
+  // Cả 2 bánh chạy cùng hướng để duy trì thăng bằng
+
+  if (abs(speed) < DEAD_BAND) {
+    stopMotors();
+    return;
+  }
+
+  bool forward = (speed > 0);
+
+  // Khoảng thời gian giữa 2 lần TOGGLE chân STEP (microseconds)
+  // Mỗi step thực = 1 cạnh lên = 2 lần toggle (HIGH→LOW→HIGH)
+  // Vì vậy chu kỳ giữa 2 toggle = (1/speed) / 2 = 500000/speed
+  long interval = (long)(500000.0f / abs(speed));
+  interval = constrain(interval, 50L, 25000L);  // toggle interval; step interval = 100us..50ms
+
+  // Motor trái
+  stepIntervalL = interval;
+  digitalWrite(DIR_L, forward ? HIGH : LOW);
+
+  // Motor phải: đảo chiều vì gắn đối xứng
+  stepIntervalR = interval;
+  digitalWrite(DIR_R, forward ? LOW : HIGH);
+}
+
+void stopMotors() {
+  stepIntervalL = 0;
+  stepIntervalR = 0;
+}
+
+void enableMotors() {
+  digitalWrite(ENABLE_PIN, LOW);   // Active LOW
+}
+
+void disableMotors() {
+  digitalWrite(ENABLE_PIN, HIGH);
+}
+
+// ============================================================
+// TẠO XUNG BƯỚC CHO STEPPER (Non-blocking)
+// ============================================================
+// Gọi hàm này liên tục trong loop() để tạo xung step chính xác
+void runSteppers() {
+  unsigned long now = micros();
+
+  // Motor trái
+  if (stepIntervalL > 0) {
+    if ((long)(now - lastStepTimeL) >= stepIntervalL) {
+      stepStateL = !stepStateL;
+      digitalWrite(STEP_L, stepStateL ? HIGH : LOW);
+      lastStepTimeL = now;
+    }
+  }
+
+  // Motor phải
+  if (stepIntervalR > 0) {
+    if ((long)(now - lastStepTimeR) >= stepIntervalR) {
+      stepStateR = !stepStateR;
+      digitalWrite(STEP_R, stepStateR ? HIGH : LOW);
+      lastStepTimeR = now;
+    }
+  }
+}

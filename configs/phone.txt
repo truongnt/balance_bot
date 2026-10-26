@@ -1,0 +1,37 @@
+# ─────────────────────────────────────────────────────────────────────
+# Chế độ điều khiển bằng điện thoại (app kiểu Arduino BT Control).
+#
+# Gửi file này TỪ PC trước khi chuyển sang điện thoại:
+#       cfg phone
+# rồi (robot đang nằm) gõ `save` để nó nhớ luôn, khỏi phải nạp lại lần sau.
+#
+# Vì sao cần: HC-05 chỉ nhận MỘT kết nối tại một thời điểm, nên khi điện thoại
+# nối vào thì PC phải nhả ra — tức là không còn cách nào chỉnh telemetry nữa
+# trừ khi app có ô gõ lệnh. Phải đặt trước.
+#
+# File này KHÔNG đụng tới tham số cân bằng. Bộ đó đã nằm trong EEPROM và trong
+# configs/balance_good.txt; ở đây chỉ chỉnh phần truyền nhận.
+# ─────────────────────────────────────────────────────────────────────
+
+# Telemetry 100Hz sẽ làm ngập terminal của app và chiếm hết đường truyền lên.
+# 20 → 5Hz, vẫn đủ để liếc xem robot còn sống, mà không trôi màn hình.
+# Muốn tắt hẳn thì dùng lệnh `lognone`.
+LOGDIV 20
+
+# Khoảng im để chốt một lệnh, tính bằng ms.
+# App gửi ký tự trần không có xuống dòng, nên firmware phân biệt bằng thời gian:
+# PC gửi trọn dòng một lần (khoảng trống giữa các ký tự <1ms ở 115200 baud),
+# còn app gửi một ký tự rồi im hàng trăm ms.
+# Nếu app phản hồi chậm thì hạ xuống 40; nếu lệnh hay bị dính thành "FF" hoặc
+# gói BT bị cắt vụn làm hiện nhiều dòng "? XY" thì nâng lên 100.
+BTIDLE 60
+
+# Biên độ mỗi lần bấm nút. Nút giữ thì app gửi lặp nên nó cộng dồn tới trần.
+# DRVSTEP 0.4 với DRVVEL 20 → mỗi lần bấm thêm 80 step/s ≈ 1.4 cm/s.
+DRVSTEP 0.4
+DRVMAX 1.5
+TRNSTEP 100
+TRNMAX 300
+
+# Chốt: xoá lệnh lái và tích phân vận tốc, đặt lại mốc giữ vị trí.
+S

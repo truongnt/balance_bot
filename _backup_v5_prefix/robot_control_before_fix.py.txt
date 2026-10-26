@@ -1,0 +1,668 @@
+#!/usr/bin/env python3
+"""
+Robot Balance Controller
+========================
+Kết nối Bluetooth HC-05 qua RFCOMM, hiển thị telemetry live, gửi lệnh.
+
+Cài đặt (không cần pybluez):
+    pip install rich prompt_toolkit
+
+Sử dụng:
+    python robot_control.py                   # scan paired BT devices trên Windows
+    python robot_control.py AA:BB:CC:DD:EE:FF # chỉ định MAC thẳng
+
+Lưu ý:
+    HC-05 phải được PAIRED trong Windows Settings → Bluetooth trước.
+    Khi script kết nối, Windows sẽ hiện "connected" — đây là bình thường.
+    Mỗi lần close socket Windows sẽ hiện "disconnected" — cũng bình thường.
+"""
+
+import sys
+
+# Fix UTF-8 output trên Windows ngay khi load module (trước rich/prompt_toolkit)
+if sys.platform == "win32":
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
+import os
+import re
+import json
+import time
+import socket
+import subprocess
+import threading
+import ctypes
+from dataclasses import dataclass
+from datetime import datetime
+from typing import Optional
+
+from rich.console import Console
+from rich.table import Table
+from rich.text import Text
+from rich.panel import Panel
+from rich import box
+
+from prompt_toolkit import PromptSession
+from prompt_toolkit.patch_stdout import patch_stdout
+from prompt_toolkit.styles import Style
+from prompt_toolkit.formatted_text import HTML
+
+# ─────────────────────────────────────────────────────────────────
+# CONFIG
+# ─────────────────────────────────────────────────────────────────
+RFCOMM_PORT    = 1       # HC-05 luôn dùng RFCOMM channel 1
+BT_RECV_SIZE   = 256
+STATUS_EVERY   = 50      # ghi log mỗi N mẫu (~0.5 giây ở 100Hz)
+# Telemetry chỉ vào log file, KHÔNG in console → prompt luôn visible
+
+# Tên thiết bị HC-05 thường gặp (highlight khi hiện danh sách)
+HC05_NAMES = {"hc-05", "hc05", "hc-06", "hc06", "linvor", "robot"}
+
+# Tham số gửi tự động sau khi kết nối (override EEPROM mỗi lần chạy)
+# Sửa ở đây thay vì upload code Arduino
+STARTUP_PARAMS = [
+    "ALPHA 0.97\n",  # CF filter: 0.97 (default) tin gyro hơn, ít motor vibration noise hơn 0.95
+    "ALPF 0.85\n",   # Accel LPF: 0.85 lọc nhiều hơn 0.7 → ít filter-drift hơn
+    "KPV 0.008\n",   # velocity P
+    "KIV 0.001\n",   # velocity I
+    "KD 12\n",       # angle D
+    "VFA 0.7\n",     # velocity filter: mượt hơn 0.6 → velocity loop ít dao động hơn
+    # BIAS gửi tự động sau khi nhận BIAS_HINT từ Arduino (xem _parse_line + _send_startup)
+]
+
+console  = Console(highlight=False, legacy_windows=False)
+_log_fh  = None   # file handle cho log, set trong main()
+
+
+def open_log_file() -> str:
+    """Mở file log mới trong thư mục logs/, trả về đường dẫn."""
+    global _log_fh
+    log_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logs")
+    os.makedirs(log_dir, exist_ok=True)
+    fname = os.path.join(log_dir, datetime.now().strftime("robot_%Y%m%d_%H%M%S.log"))
+    _log_fh = open(fname, "w", encoding="utf-8", buffering=1)  # line-buffered
+    return fname
+
+
+def safe_print(*args, **kwargs):
+    """In ra terminal VÀ ghi vào log file."""
+    console.print(*args, **kwargs)
+    if _log_fh:
+        text = " ".join(str(a) for a in args)
+        _log_fh.write(Text.from_markup(text).plain + "\n")
+
+
+def log_only(*args):
+    """Chỉ ghi vào log file, KHÔNG in terminal — dùng cho telemetry dày."""
+    if _log_fh:
+        text = " ".join(str(a) for a in args)
+        _log_fh.write(Text.from_markup(text).plain + "\n")
+
+
+# ─────────────────────────────────────────────────────────────────
+# TELEMETRY STATE
+# ─────────────────────────────────────────────────────────────────
+@dataclass
+class Telemetry:
+    angle:        float = 0.0
+    accel:        float = 0.0
+    target_angle: float = 0.0
+    gyro_rate:    float = 0.0
+    speed:        int   = 0
+    steps_l:      int   = 0
+    steps_r:      int   = 0
+    kp_angle:     float = 0.0
+    kd_angle:     float = 0.0
+    kp_vel:       float = 0.0
+    ki_vel:       float = 0.0
+    drive:        float = 0.0
+    turn:         int   = 0
+    state:        str   = "CONNECTING"
+    last_update:  float = 0.0
+    sample_count: int   = 0
+
+
+# ─────────────────────────────────────────────────────────────────
+# BLUETOOTH RFCOMM CONNECTION
+# ─────────────────────────────────────────────────────────────────
+class RobotBT:
+    def __init__(self, mac: str):
+        self.mac = mac.upper()
+        self._sock: Optional[socket.socket] = None
+        self._running = False
+        self._thread: Optional[threading.Thread] = None
+        self.telem = Telemetry()
+        self._lock = threading.Lock()
+        self._pending_startup = False   # gửi startup params sau khi "Bat dau!" nhận được
+        self._bias_hint: Optional[float] = None  # auto-detect từ "BIAS_HINT <val>" của Arduino
+
+    def connect(self):
+        console.print(f"[cyan]Đang kết nối tới [bold]{self.mac}[/bold] ...[/cyan]")
+        # Dùng socket.AF_BLUETOOTH có sẵn trong Python 3.3+ (không cần pybluez)
+        self._sock = socket.socket(socket.AF_BLUETOOTH, socket.SOCK_STREAM, socket.BTPROTO_RFCOMM)
+        self._sock.settimeout(10)
+        self._sock.connect((self.mac, RFCOMM_PORT))
+        self._sock.settimeout(2)          # timeout cho recv sau khi kết nối
+        self._running = True
+        self._thread = threading.Thread(target=self._reader, daemon=True, name="bt-reader")
+        self._thread.start()
+        console.print(f"[green]✓ Kết nối thành công![/green]")
+
+    def disconnect(self):
+        self._running = False
+        if self._sock:
+            try:
+                self._sock.close()
+            except Exception:
+                pass
+        console.print("[yellow]Đã ngắt kết nối Bluetooth.[/yellow]")
+
+    @property
+    def connected(self) -> bool:
+        return self._sock is not None and self._running
+
+    def send(self, cmd: str):
+        if not self.connected:
+            console.print("[red]Lỗi: chưa kết nối![/red]")
+            return
+        try:
+            self._sock.sendall(cmd.encode("utf-8"))
+        except OSError as e:
+            console.print(f"[red]Lỗi gửi lệnh: {e}[/red]")
+
+    # ── reader thread ────────────────────────────────────────────
+    def _reader(self):
+        buf = ""
+        while self._running:
+            try:
+                data = self._sock.recv(BT_RECV_SIZE)
+                if not data:
+                    console.print("[yellow]Mất kết nối BT.[/yellow]")
+                    self._running = False
+                    break
+                buf += data.decode("utf-8", errors="replace")
+                while "\n" in buf:
+                    line, buf = buf.split("\n", 1)
+                    line = line.strip("\r ")
+                    if line:
+                        self._parse_line(line)
+            except socket.timeout:
+                continue
+            except OSError as e:
+                if self._running:
+                    console.print(f"[red][BT ERR] {e}[/red]")
+                self._running = False
+                break
+
+    def _parse_line(self, line: str):
+        with self._lock:
+            t = self.telem
+
+            # ── Bỏ qua header line Arduino & garbage bytes ────────
+            # Header: "angle\taccel\ttargetA\tgyroR\tspeed\tstepsL\tstepsR"
+            # Garbage: ký tự non-printable hoặc toàn binary
+            if line.startswith("angle\t"):
+                return
+            printable = sum(1 for c in line if c.isprintable())
+            if len(line) > 4 and printable / len(line) < 0.7:
+                return   # >30% ký tự lạ → garbage, bỏ qua
+
+            # ── Telemetry: angle\taccel\ttargetA\tgyroR\tspeed\tstepsL\tstepsR
+            parts = line.split("\t")
+            if len(parts) == 7:
+                try:
+                    t.angle        = float(parts[0])
+                    t.accel        = float(parts[1])
+                    t.target_angle = float(parts[2])
+                    t.gyro_rate    = float(parts[3])
+                    t.speed        = int(parts[4])
+                    t.steps_l      = int(parts[5])
+                    t.steps_r      = int(parts[6])
+                    t.last_update  = time.time()
+                    t.sample_count += 1
+                    if t.state not in ("FALLEN", "CALIBRATING"):
+                        t.state = "BALANCING"
+                    # In status 1 dòng mỗi STATUS_EVERY mẫu
+                    if t.sample_count % STATUS_EVERY == 0:
+                        self._print_status(t)
+                    return
+                except ValueError:
+                    pass
+
+            # ── Sự kiện ──────────────────────────────────────────
+            if "[!] FALLEN" in line:
+                t.state = "FALLEN"
+                safe_print(f"[bold red]{line}[/bold red]")
+            elif "[+] RECOVERED" in line:
+                t.state = "BALANCING"
+                safe_print(f"[bold green]{line}[/bold green]")
+            elif "> drive=" in line:
+                m = re.search(r"drive=([-\d.]+)", line)
+                if m: t.drive = float(m.group(1))
+                safe_print(f"[cyan]{line}[/cyan]")
+            elif "> turn=" in line:
+                m = re.search(r"turn=([-\d]+)", line)
+                if m: t.turn = int(m.group(1))
+                safe_print(f"[cyan]{line}[/cyan]")
+            elif "> STOP" in line:
+                t.drive = 0; t.turn = 0
+                safe_print(f"[yellow]{line}[/yellow]")
+            elif line.startswith("Kp="):
+                m = re.search(r"Kp=([\d.]+)", line);  t.kp_angle = float(m.group(1)) if m else t.kp_angle
+                m = re.search(r"Kd=([\d.]+)", line);  t.kd_angle = float(m.group(1)) if m else t.kd_angle
+                m = re.search(r"Kpv=([\d.]+)", line); t.kp_vel   = float(m.group(1)) if m else t.kp_vel
+                m = re.search(r"Kiv=([\d.]+)", line); t.ki_vel   = float(m.group(1)) if m else t.ki_vel
+                safe_print(f"[magenta]{line}[/magenta]")
+            elif "Calib:" in line or "GIU robot" in line:
+                t.state = "CALIBRATING"
+                safe_print(f"[blue]{line}[/blue]")
+            elif "Bat dau!" in line:
+                t.state = "BALANCING"
+                safe_print(f"[bold green]{line}[/bold green]")
+                self._pending_startup = True   # trigger gửi params
+            elif line.startswith("BIAS_HINT "):
+                try:
+                    hint = float(line.split()[1])
+                    self._bias_hint = hint
+                    safe_print(f"[dim blue]>> BIAS_HINT: {hint:+.2f}° — sẽ tự gửi sau Bat dau![/dim blue]")
+                except (IndexError, ValueError):
+                    pass
+            elif any(k in line for k in ("=== ROBOT", "MPU OK", "gyroBias", "upright_offset", "Goc ban dau")):
+                safe_print(f"[dim blue]{line}[/dim blue]")
+            elif line.startswith("> "):
+                # Phản hồi tuning từ Arduino ("> kp=85.00", "> SAVED", "> bias=0.30", ...)
+                safe_print(f"[bold magenta]{line}[/bold magenta]")
+
+    @staticmethod
+    def _print_status(t: "Telemetry"):
+        sign = "+" if t.angle >= 0 else ""
+        state_colors = {"BALANCING": "green", "FALLEN": "red", "CALIBRATING": "yellow"}
+        sc = state_colors.get(t.state, "white")
+        # drift = CF angle vs accel angle: >0.5° cảnh báo filter đang lệch
+        drift = t.angle - t.accel
+        drift_str = f" [yellow]drift{drift:+.1f}°[/yellow]" if abs(drift) > 0.5 else ""
+        line = (
+            f"[dim]#{t.sample_count:<5}[/dim] [{sc}]{t.state:<10}[/{sc}] "
+            f"[white]{sign}{t.angle:5.2f}°[/white] "
+            f"[dim]tgt[/dim][white]{t.target_angle:+5.2f}°[/white] "
+            f"[dim]spd[/dim][white]{t.speed:+5d}[/white] "
+            f"[dim]gyro[/dim][white]{t.gyro_rate:+5.1f}°/s[/white]"
+            f"{drift_str}"
+        )
+        # Telemetry chỉ ghi log file — KHÔNG in console để giữ prompt visible
+        log_only(line)
+
+
+# ─────────────────────────────────────────────────────────────────
+# BLUETOOTH DEVICE SCAN — dùng PowerShell, không cần pybluez
+# ─────────────────────────────────────────────────────────────────
+_PS_SCAN = r"""
+$devs = Get-PnpDevice -Class Bluetooth -ErrorAction SilentlyContinue |
+        Where-Object { $_.InstanceId -match 'DEV_' }
+$result = @()
+foreach ($d in $devs) {
+    if ($d.InstanceId -match 'DEV_([0-9A-Fa-f]{12})') {
+        $raw = $Matches[1].ToUpper()
+        $mac = ($raw -split '(.{2})' | Where-Object { $_ }) -join ':'
+        $result += [PSCustomObject]@{ mac=$mac; name=$d.FriendlyName }
+    }
+}
+if ($result.Count -gt 0) { $result | ConvertTo-Json -Compress }
+"""
+
+def scan_paired_windows() -> list[tuple[str, str]]:
+    """Lấy danh sách thiết bị BT đã paired trên Windows qua PowerShell."""
+    try:
+        r = subprocess.run(
+            ["powershell", "-NoProfile", "-NonInteractive", "-Command", _PS_SCAN],
+            capture_output=True, text=True, timeout=15,
+        )
+        out = r.stdout.strip()
+        if not out:
+            return []
+        data = json.loads(out)
+        if isinstance(data, dict):   # 1 thiết bị → dict thay vì list
+            data = [data]
+        return [(d["mac"], d.get("name") or "") for d in data if d.get("mac")]
+    except Exception:
+        return []
+
+def _validate_mac(s: str) -> Optional[str]:
+    mac = s.strip().upper().replace("-", ":")
+    if re.fullmatch(r"([0-9A-F]{2}:){5}[0-9A-F]{2}", mac):
+        return mac
+    return None
+
+def choose_device(mac_arg: Optional[str] = None) -> Optional[str]:
+    """Trả về MAC address để kết nối."""
+
+    # MAC truyền từ command line
+    if mac_arg:
+        mac = _validate_mac(mac_arg)
+        if mac:
+            return mac
+        console.print(f"[red]MAC không hợp lệ: {mac_arg}[/red]")
+        console.print("Định dạng đúng: AA:BB:CC:DD:EE:FF")
+        return None
+
+    # Scan paired devices qua PowerShell
+    console.print("[cyan]Đang lấy danh sách thiết bị BT đã paired...[/cyan]")
+    devices = scan_paired_windows()
+
+    if devices:
+        console.print(f"\n[bold cyan]─── Thiết bị Bluetooth đã paired ({len(devices)}) ───[/bold cyan]")
+        for i, (mac, name) in enumerate(devices):
+            tag = "[green]← HC-05?[/green]" if name.lower() in HC05_NAMES else ""
+            console.print(f"  [yellow]{i+1}[/yellow]. [white]{mac}[/white]  {name:<24} {tag}")
+        console.print()
+    else:
+        console.print("[yellow]Không tìm thấy thiết bị nào đã paired.[/yellow]")
+        console.print("Hãy vào Windows Settings → Bluetooth → Add device → chọn HC-05 (PIN: 1234)\n")
+
+    while True:
+        try:
+            prompt = "Chọn số thứ tự hoặc nhập MAC (AA:BB:CC:DD:EE:FF): " if devices \
+                     else "Nhập MAC address của HC-05: "
+            choice = input(prompt).strip()
+            if not choice:
+                continue
+            if devices and choice.isdigit():
+                idx = int(choice) - 1
+                if 0 <= idx < len(devices):
+                    return devices[idx][0]
+                console.print("[red]Số không hợp lệ.[/red]")
+                continue
+            mac = _validate_mac(choice)
+            if mac:
+                return mac
+            console.print("[red]Định dạng MAC sai. Ví dụ: 98:DA:60:01:23:45[/red]")
+        except (KeyboardInterrupt, EOFError):
+            return None
+
+
+# ─────────────────────────────────────────────────────────────────
+# DISPLAY
+# ─────────────────────────────────────────────────────────────────
+STATE_STYLE = {
+    "BALANCING":   "bold green",
+    "FALLEN":      "bold red",
+    "CALIBRATING": "bold yellow",
+    "CONNECTING":  "dim",
+}
+
+def angle_bar(angle: float, width: int = 24) -> str:
+    limit  = 30.0
+    pct    = max(-1.0, min(1.0, angle / limit))
+    center = width // 2
+    pos    = center + int(pct * center)
+    bar    = ["-"] * width
+    bar[center] = "|"
+    if 0 <= pos < width:
+        bar[pos] = "█"
+    return "".join(bar)
+
+def render_telemetry(t: Telemetry) -> Panel:
+    tbl = Table(box=box.SIMPLE, show_header=False, padding=(0, 1))
+    tbl.add_column("k",  style="bold cyan", no_wrap=True)
+    tbl.add_column("v",  style="white",     no_wrap=True)
+    tbl.add_column("k2", style="bold cyan", no_wrap=True)
+    tbl.add_column("v2", style="white",     no_wrap=True)
+
+    age     = time.time() - t.last_update if t.last_update else 999
+    age_str = f"{age:.1f}s ago" if age < 60 else "---"
+    sign    = "+" if t.angle >= 0 else ""
+    bar     = angle_bar(t.angle)
+    state   = Text(t.state, style=STATE_STYLE.get(t.state, "white"))
+
+    tbl.add_row("Góc (angle)",   Text(f"{sign}{t.angle:6.2f}°  [{bar}]"),
+                "Target angle",  f"{t.target_angle:+.2f}°")
+    tbl.add_row("Accel angle",   f"{t.accel:+.2f}°",
+                "Gyro rate",     f"{t.gyro_rate:+.1f}°/s")
+    tbl.add_row("Speed",         f"{t.speed:+6d} step/s",
+                "Steps L / R",   f"{t.steps_l} / {t.steps_r}")
+    tbl.add_row("BT drive",      f"{t.drive:+.2f}°",
+                "BT turn",       f"{t.turn:+d} step/s")
+    tbl.add_row("Kp / Kd angle", f"{t.kp_angle} / {t.kd_angle}",
+                "Kpv / Kiv",     f"{t.kp_vel:.4f} / {t.ki_vel:.4f}")
+    tbl.add_row("Trạng thái",    state,
+                "Samples",       f"{t.sample_count}  ({age_str})")
+
+    return Panel(tbl, title="[bold]TELEMETRY[/bold]", border_style="cyan")
+
+def print_help():
+    console.print("""
+[bold cyan]╔══════════════════════════════════════════════════════╗
+║              ROBOT BALANCE — HƯỚNG DẪN SỬ DỤNG      ║
+╚══════════════════════════════════════════════════════╝[/bold cyan]
+
+[bold yellow]ĐIỀU KHIỂN[/bold yellow]
+  [yellow]f[/yellow] / [yellow]b[/yellow]          Tiến / Lùi  (+0.4° mỗi lần)
+  [yellow]l[/yellow] / [yellow]r[/yellow]          Rẽ trái / Rẽ phải
+  [yellow]s[/yellow]             Dừng (reset drive + turn về 0)
+  [yellow]f3[/yellow] [yellow]b2[/yellow] [yellow]r4[/yellow] ...  Gửi lệnh N lần liên tiếp
+
+[bold yellow]THÔNG TIN[/bold yellow]
+  [yellow]t[/yellow]             Xem bảng telemetry
+  [yellow]get[/yellow]           Xem tất cả tham số hiện tại (từ robot)
+  [yellow]p[/yellow]             In PID gains nhanh
+
+[bold yellow]LIVE TUNING — CÂN BẰNG[/bold yellow]
+  [yellow]bias <val>[/yellow]    Đặt độ nghiêng bù CG, dương=về trước  [dim](mặc định: 0.0)[/dim]
+  [yellow]biasadj <±>[/yellow]   Cộng thêm vào bias hiện tại
+  [dim]→ Robot đổ về sau: tăng bias dần (bias 0.3 → 0.5 → ...)[/dim]
+
+[bold yellow]LIVE TUNING — PID ANGLE (vòng trong, 100Hz)[/bold yellow]
+  [yellow]kp <val>[/yellow]      Kp_angle — tăng nếu cân bằng yếu    [dim](mặc định: 80)[/dim]
+  [yellow]kd <val>[/yellow]      Kd_angle — tăng nếu dao động nhiều  [dim](mặc định: 12)[/dim]
+  [yellow]ki <val>[/yellow]      Ki_angle — thường để 0               [dim](mặc định: 0)[/dim]
+
+[bold yellow]LIVE TUNING — PID VELOCITY (vòng ngoài, 10Hz)[/bold yellow]
+  [yellow]kpv <val>[/yellow]     Kp_vel — tốc độ bù drift             [dim](mặc định: 0.008)[/dim]
+  [yellow]kiv <val>[/yellow]     Ki_vel — bù drift dài hạn            [dim](mặc định: 0.001)[/dim]
+
+[bold yellow]LIVE TUNING — BỘ LỌC[/bold yellow]
+  [yellow]alpha <val>[/yellow]   CF filter (0.93–0.98), thấp=tin accel hơn  [dim](mặc định: 0.97)[/dim]
+  [yellow]alpf <val>[/yellow]    Accel LPF (0.3–0.9), thấp=ít lọc hơn      [dim](mặc định: 0.70)[/dim]
+  [yellow]vfa <val>[/yellow]     Velocity filter (0–0.9)                    [dim](mặc định: 0.60)[/dim]
+  [dim]→ Filter drift (ngã mà angle thấy nhỏ): thử alpha 0.95[/dim]
+
+[bold yellow]LIVE TUNING — MOTOR[/bold yellow]
+  [yellow]spd <val>[/yellow]     Max tốc độ motor (step/s)   [dim](mặc định: 5500)[/dim]
+  [yellow]acc <val>[/yellow]     Max gia tốc motor            [dim](mặc định: 1200)[/dim]
+  [yellow]mto <val>[/yellow]     Max góc velocity loop (°)   [dim](mặc định: 3.0)[/dim]
+
+[bold yellow]LƯU / PHỤC HỒI[/bold yellow]
+  [yellow]save[/yellow]          Lưu tất cả params vào EEPROM (nhớ qua power cycle)
+  [yellow]load[/yellow]          Load lại từ EEPROM
+  [yellow]reset[/yellow]         Reset về giá trị mặc định (chưa save)
+
+  [yellow]help[/yellow]  Hiện lại menu này     [yellow]quit[/yellow]  Thoát
+""")
+
+
+# ─────────────────────────────────────────────────────────────────
+# COMMAND PROCESSOR
+# ─────────────────────────────────────────────────────────────────
+SINGLE_CMDS = {"f": "F\n", "b": "B\n", "l": "L\n", "r": "R\n", "s": "S\n", "p": "P\n"}
+
+# Live tuning: bias +0.1 / bias -0.2 / kp 85 / kd 14
+_TUNE_RE = re.compile(r"^(bias|biasadj|kp|ki|kd|kpv|kiv|alpha|alpf|vfa|mto|spd|acc)\s*([-+]?\d+\.?\d*)$")
+
+def process_command(robot: RobotBT, user_input: str) -> bool:
+    cmd = user_input.strip()
+    if not cmd:
+        return True
+    lower = cmd.lower()
+
+    if lower in ("quit", "exit", "q"):
+        return False
+    if lower in ("help", "?", "h"):
+        print_help()
+        return True
+    if lower in ("t", "telem", "telemetry", "status"):
+        with robot._lock:
+            console.print(render_telemetry(robot.telem))
+        return True
+    if lower.startswith("raw "):
+        payload = cmd[4:]
+        robot.send(payload)
+        console.print(f"[dim]→ raw: {repr(payload)}[/dim]")
+        return True
+
+    # Live tuning — gửi lệnh có newline để Arduino parse đúng
+    m = _TUNE_RE.match(lower)
+    if m:
+        key, val = m.group(1), m.group(2)
+        cmd_map = {
+            "bias":    f"BIAS {val}\n",
+            "biasadj": f"BIASADJ {val}\n",
+            "kp":      f"KP {val}\n",
+            "ki":      f"KI {val}\n",
+            "kd":      f"KD {val}\n",
+            "kpv":     f"KPV {val}\n",
+            "kiv":     f"KIV {val}\n",
+            "alpha":   f"ALPHA {val}\n",
+            "alpf":    f"ALPF {val}\n",
+            "vfa":     f"VFA {val}\n",
+            "mto":     f"MTO {val}\n",
+            "spd":     f"SPD {val}\n",
+            "acc":     f"ACC {val}\n",
+        }
+        if key in cmd_map:
+            robot.send(cmd_map[key])
+            safe_print(f"[dim yellow]>> {cmd_map[key].strip()}[/dim yellow]")
+        return True
+
+    if lower in ("save",):
+        robot.send("SAVE\n")
+        safe_print(f"[dim yellow]>> SAVE (robot có thể ngã — block ~150ms)[/dim yellow]")
+        return True
+    if lower in ("load",):
+        robot.send("LOAD\n")
+        safe_print(f"[dim yellow]>> LOAD[/dim yellow]")
+        return True
+    if lower in ("reset",):
+        robot.send("RESET\n")
+        safe_print(f"[dim yellow]>> RESET[/dim yellow]")
+        return True
+    if lower in ("get", "params"):
+        robot.send("GET\n")
+        return True
+    if lower in SINGLE_CMDS:
+        robot.send(SINGLE_CMDS[lower])
+        return True
+
+    m = re.fullmatch(r"([fblrsp])(\d+)", lower)
+    if m:
+        key, n = m.group(1), min(int(m.group(2)), 20)
+        bt_cmd = SINGLE_CMDS[key]
+        for _ in range(n):
+            robot.send(bt_cmd)
+            time.sleep(0.05)
+        console.print(f"[dim]→ '{bt_cmd}' × {n}[/dim]")
+        return True
+
+    console.print(f"[red]Lệnh không rõ: '{cmd}'. Gõ 'help' để xem hướng dẫn.[/red]")
+    return True
+
+
+
+
+# ─────────────────────────────────────────────────────────────────
+# MAIN
+# ─────────────────────────────────────────────────────────────────
+def _enable_windows_ansi():
+    """Bật ANSI VT processing cho cmd.exe / PowerShell cũ trên Windows 10+."""
+    try:
+        k32 = ctypes.windll.kernel32
+        handle = k32.GetStdHandle(-11)          # STD_OUTPUT_HANDLE
+        mode   = ctypes.c_ulong()
+        k32.GetConsoleMode(handle, ctypes.byref(mode))
+        k32.SetConsoleMode(handle, mode.value | 0x0004)  # ENABLE_VIRTUAL_TERMINAL_PROCESSING
+    except Exception:
+        pass
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
+
+def main():
+    if sys.platform == "win32":
+        _enable_windows_ansi()
+
+    console.print("[bold cyan]╔══════════════════════════════════╗[/bold cyan]")
+    console.print("[bold cyan]║  Robot Balance BT Controller     ║[/bold cyan]")
+    console.print("[bold cyan]╚══════════════════════════════════╝[/bold cyan]\n")
+
+    mac_arg = sys.argv[1] if len(sys.argv) >= 2 else None
+    mac = choose_device(mac_arg)
+    if not mac:
+        console.print("[red]Thoát.[/red]")
+        sys.exit(1)
+
+    robot = RobotBT(mac)
+    try:
+        robot.connect()
+    except OSError as e:
+        console.print(f"[red]Không thể kết nối tới {mac}: {e}[/red]")
+        console.print("Kiểm tra: HC-05 đã ghép nối (paired) chưa? Đang bật nguồn?")
+        sys.exit(1)
+
+    log_path = open_log_file()
+    console.print(f"[dim]Log file: [white]{log_path}[/white][/dim]")
+    console.print("[dim]Startup params sẽ tự gửi sau khi Arduino báo 'Bat dau!'[/dim]")
+
+    print_help()
+    console.print("[dim]Log từ robot xuất hiện tự động. Gõ lệnh bên dưới:[/dim]\n")
+
+    def _send_startup():
+        if not STARTUP_PARAMS:
+            return
+        time.sleep(0.3)
+        safe_print("[dim yellow]>> Gửi startup params...[/dim yellow]")
+        for cmd in STARTUP_PARAMS:
+            robot.send(cmd)
+            safe_print(f"[dim yellow]>> {cmd.strip()}[/dim yellow]")
+            time.sleep(0.12)
+        # Auto-apply BIAS từ hint calibration Arduino gửi trước "Bat dau!"
+        if robot._bias_hint is not None:
+            bias_cmd = f"BIAS {robot._bias_hint:.2f}\n"
+            robot.send(bias_cmd)
+            safe_print(f"[dim yellow]>> {bias_cmd.strip()} (auto-detect từ calibration)[/dim yellow]")
+
+    session = PromptSession(style=Style.from_dict({"prompt": "bold ansicyan"}))
+    _ctrl_c = 0
+    while robot.connected:
+        # Gửi startup params mỗi khi Arduino reboot ("Bat dau!" nhận được)
+        if robot._pending_startup:
+            robot._pending_startup = False
+            threading.Thread(target=_send_startup, daemon=True).start()
+
+        try:
+            user_input = session.prompt(
+                HTML("<ansigreen><b>robot</b></ansigreen><ansicyan>></ansicyan> "),
+                timeout=1.0,
+            )
+            _ctrl_c = 0
+        except KeyboardInterrupt:
+            _ctrl_c += 1
+            if _ctrl_c >= 2:
+                console.print("\n[bold red]Ctrl+C × 2 — thoát.[/bold red]")
+                break
+            console.print("\n[yellow]Ctrl+C — bấm lần nữa để thoát, hoặc gõ 'quit'.[/yellow]")
+            continue
+        except EOFError:
+            break
+        except Exception:
+            # timeout — không reset counter, chỉ kiểm tra pending_startup rồi prompt lại
+            continue
+        if not process_command(robot, user_input):
+            break
+
+    robot.disconnect()
+    if _log_fh:
+        _log_fh.close()
+        console.print(f"[dim]Log đã lưu: [white]{log_path}[/white][/dim]")
+    console.print("[bold]Tạm biệt![/bold]")
+
+
+if __name__ == "__main__":
+    main()

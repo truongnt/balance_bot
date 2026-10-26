@@ -1,0 +1,76 @@
+# ─────────────────────────────────────────────────────────────────────
+# Giống balance_good, thêm 2 cột gỡ lỗi để soi bên trong bộ điều khiển.
+#   pidout  = lực bộ điều khiển MUỐN sinh ra
+#   ctrlout = sau khi tích phân thành lệnh tốc độ (arch 1)
+#   speed   = lệnh THỰC SỰ tới motor, sau khi bị ramp 'acc' chặn
+# ctrlout chạy xa trước speed  ->  ramp gia tốc là nút thắt.
+# LOGMASK 1023 = 8 cột mặc định (255) + pidout (bit 8) + ctrlout (bit 9)
+# 10 cột @100Hz ≈ 7 KB/s, vẫn dưới trần 11.5 KB/s của 115200 baud.
+# ─────────────────────────────────────────────────────────────────────
+
+# ── KIẾN TRÚC — bắt buộc, không có cái này thì không bao giờ cân bằng được ──
+# arch 0 ra lệnh TỐC ĐỘ: bánh lăn đều không sinh ra lực, robot nghiêng cố định
+# thì không có gì kéo về. arch 1 ra lệnh GIA TỐC rồi tích phân thành tốc độ.
+ARCH 1
+
+# ── Vòng trong: góc, 100Hz ──
+# kp 45 ≈ 4.6× trọng lực. Điểm hoà là 9.7 — dưới mức đó không cứu được gì.
+# kd 2.5 cho ζ≈0.7. KHÔNG chép tỉ lệ Kd/Kp của B-ROBOT (≈15): robot đó cao hơn,
+# cực chậm hơn; áp vào đây ra kd 180, đẩy cực chậm nhất về −0.11 rad/s (9 giây).
+KP 45
+KD 2.5
+KI 0
+
+# ── Vòng giữa: vận tốc, 10Hz ──
+# VDIR 1 là DẤU ĐÚNG. Mặc định cũ −1 là PHẢN HỒI DƯƠNG, tự khuếch đại trôi.
+# Đổi dấu làm angle σ giảm một nửa (1.41 → 0.48).
+# kpv giữ thấp: 0.03 làm σ tệ gấp 4, 0.06 làm đổ. Chỉnh kiv nếu cần, đừng chỉnh kpv.
+VDIR 1
+KPV 0.008
+KIV 0.001
+VFA 0.7
+MTO 3
+BIAS 0
+# Goc lap MPU, do 25/10/2026 — xem chu thich trong balance_good.txt
+UPOFF 2.0
+
+# ── Vòng ngoài: vị trí ──
+# Dùng stepsL/stepsR tích luỹ để robot quay VỀ CHỖ CŨ, không chỉ dừng lại.
+# 0.05 quá nhanh → chu trình giới hạn 0.33Hz (σ 1.86). 0.015 là vừa.
+# Nguyên tắc: vòng ngoài phải CHẬM HƠN vòng trong nó bọc.
+KPPOS 0.015
+# VMAX 200 (=2000 step/s) qua cao: do 25/10/2026, luc lech 1m vong vi tri doi
+# 872 step/s va duoc cho het -> speed leo toi tran 3000 trong 2.5s roi nga.
+VMAX 40
+
+# ── Lenh lai = lenh TOC DO BANH ──
+# DRIVE 1.0 -> 20 steps/100ms = 200 step/s = 3.5 cm/s. DRVMAX 1.5 -> 5.3 cm/s.
+# Truoc 25/10 bt_drive cong thang vao target_angle, vo dung: trong tam cao 59mm
+# nen nghieng 1 do chi sinh ~10 mN.m, nho hon momen detent NEMA17 (10-16 mN.m).
+DRVVEL 20
+
+# ── Giới hạn motor ──
+# acc 350 ≈ 6.2 m/s², khớp mô-men thật của motor. Cũ 1500 = 26.5 m/s² → trượt bước.
+# spd 3000 chặn dòng nếu khâu tích phân của arch 1 chạy loạn.
+ACC 350
+SPD 3000
+
+# ── Bộ lọc ──
+ALPHA 0.97
+ALPF 0.85
+DLPF 5
+
+# ── An toàn ──
+FALL 45
+REC 10
+RECG 100
+
+# ── Lái từ xa ──
+DRVSTEP 0.4
+DRVMAX 1.5
+TRNSTEP 100
+TRNMAX 300
+
+# Xoá tích phân, chốt mốc vị trí về chỗ robot đang đứng
+LOGMASK 1023
+S

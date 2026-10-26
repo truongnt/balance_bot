@@ -1,0 +1,28 @@
+[+] RECOVERED
+#50    BALANCING  + 0.43° tgt+1.29° spd -579 gyro+54.0°/s
+#100   BALANCING  + 1.04° tgt+1.32° spd -449 gyro+39.4°/s
+#150   BALANCING  + 3.45° tgt+1.24° spd -483 gyro+25.6°/s
+#200   BALANCING  + 3.53° tgt+1.09° spd -360 gyro+13.8°/s
+#250   BALANCING  + 2.48° tgt+1.05° spd +377 gyro-41.0°/s
+#300   BALANCING  + 3.35° tgt+0.98° spd +204 gyro-32.9°/s
+#350   BALANCING  + 6.68° tgt+0.70° spd -279 gyro-16.6°/s
+#400   BALANCING  + 3.96° tgt+0.71° spd +566 gyro-68.8°/s
+#450   BALANCING  + 0.55° tgt+0.93° spd +738 gyro-59.0°/s
+#500   BALANCING  + 1.32° tgt+0.95° spd +335 gyro-30.4°/s
+#550   BALANCING  + 1.62° tgt+0.85° spd +463 gyro-43.8°/s
+#600   BALANCING  + 0.30° tgt+0.87° spd +118 gyro -6.1°/s
+#650   BALANCING  + 1.04° tgt+0.88° spd -613 gyro+50.0°/s
+#700   BALANCING  + 1.76° tgt+0.86° spd -644 gyro+47.6°/s
+#750   BALANCING  + 2.65° tgt+0.80° spd -206 gyro +4.9°/s
+#800   BALANCING  + 3.55° tgt+0.73° spd +447 gyro-56.1°/s
+#850   BALANCING  + 1.29° tgt+0.95° spd +361 gyro-32.4°/s
+#900   BALANCING  -8.02° tgt+1.43° spd+1018 gyro-21.9°/s
+#950   BALANCING  + 0.06° tgt+1.25° spd +645 gyro-45.9°/s
+#1000  BALANCING  + 1.88° tgt+0.93° spd  +97 gyro-14.4°/s
+#1050  BALANCING  + 1.60° tgt+0.92° spd -616 gyro+46.8°/s
+#1100  BALANCING  + 2.51° tgt+0.91° spd -904 gyro+64.8°/s
+#1150  BALANCING  + 5.73° tgt+0.55° spd -599 gyro+15.4°/s
+#1200  BALANCING  -2.14° tgt+1.09° spd +637 gyro-31.6°/s
+#1250  BALANCING  -6.38° tgt+1.44° spd +290 gyro+27.9°/s
+#1300  BALANCING  + 0.13° tgt+1.36° spd  -94 gyro+16.2°/s
+[!] FALLEN (filter drift! resync angle)

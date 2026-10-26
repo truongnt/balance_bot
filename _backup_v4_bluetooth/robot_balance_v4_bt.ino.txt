@@ -1,0 +1,534 @@
+/*
+ * ============================================================
+ *   ROBOT 2 BANH TU CAN BANG - v2 (B-ROBOT EVO2 architecture)
+ * ============================================================
+ *  Thay doi so voi v1:
+ *  1. TIMER1 ISR phat xung step (chinh xac, khong giat boi Serial.print)
+ *  2. CASCADED PID: vong ngoai van toc -> dieu chinh target_angle
+ *     -> khong can chinh TARGET_ANGLE thu cong, robot khong bi troi
+ *  3. ACCELERATION RAMPING: gioi han dSpeed/dt -> motor khong mat buoc,
+ *     giam dong peak -> mat me hon
+ *  4. AUTO-CALIBRATION goc dung thang: cam robot dung thang khi khoi dong,
+ *     code tu lay accel offset -> khong can hardcode TARGET_ANGLE
+ *
+ *  Phan cung (giong v1):
+ *    Arduino Uno + CNC Shield + 2x A4988 + 2x NEMA17 + MPU-6050
+ *    Motor trai  (X): STEP=D2, DIR=D5
+ *    Motor phai  (Y): STEP=D3, DIR=D6
+ *    Enable       : D8 (LOW = bat)
+ *    MPU SDA/SCL  : A4 / A5
+ *    Microstep 1/8: jumper M0+M1 ON, M2 OFF
+ *
+ *  Quy trinh tinh chinh:
+ *    1. Bat dau Kp_angle=80, Kd_angle=15, Ki_angle=0, Kp_vel=0
+ *       -> Chi vong angle hoat dong (giong v1)
+ *    2. Tang Kp_angle den khi can bang co ban
+ *    3. Tang Kd_angle de giam dao dong
+ *    4. BAT vong velocity: Kp_vel=0.05, tang dan
+ *       -> Robot se TU bu troi, khong can chinh TARGET_ANGLE_BIAS
+ *    5. Neu robot oscillate sau khi bat velocity loop:
+ *       -> Doi dau VEL_DIR (+1 / -1)
+ * ============================================================
+ */
+
+#include <Wire.h>
+#include <avr/interrupt.h>
+
+// ============================================================
+// PIN MAPPING (CNC Shield) - dung direct port de toc do
+// ============================================================
+//  D2 = PORTD bit 2 (STEP_L)
+//  D3 = PORTD bit 3 (STEP_R)
+//  D5 = PORTD bit 5 (DIR_L)
+//  D6 = PORTD bit 6 (DIR_R)
+//  D8 = PORTB bit 0 (ENABLE)
+#define STEP_L_HIGH()  (PORTD |=  (1 << 2))
+#define STEP_L_LOW()   (PORTD &= ~(1 << 2))
+#define STEP_R_HIGH()  (PORTD |=  (1 << 3))
+#define STEP_R_LOW()   (PORTD &= ~(1 << 3))
+#define DIR_L_HIGH()   (PORTD |=  (1 << 5))
+#define DIR_L_LOW()    (PORTD &= ~(1 << 5))
+#define DIR_R_HIGH()   (PORTD |=  (1 << 6))
+#define DIR_R_LOW()    (PORTD &= ~(1 << 6))
+#define ENABLE_PIN     8
+
+// MPU-6050
+#define MPU_ADDR       0x68
+
+// ============================================================
+// THAM SO DIEU KHIEN
+// ============================================================
+
+// --- PID vong trong (Angle, ~100Hz) ---
+// REVERT v3 config (run 25-giay stable): Kp=80, Kd=12
+// Ket hop voi Vref=0.6V: balance 25s + recover ±13°
+float Kp_angle = 80.0;
+float Ki_angle = 0.0;
+float Kd_angle = 12.0;
+
+// --- PID vong ngoai (Velocity, ~10Hz) - tang Ki cho forward drift ---
+float Kp_vel  = 0.008;           // Stable
+float Ki_vel  = 0.001;           // Bu drift dai han
+#define VEL_DIR        (-1)
+#define MAX_TARGET_OFFSET  3.0f  // 2.0 -> 3.0: cho velocity loop them cho swing
+
+// Bias cho CG offset cua robot - bake in tu observation thuc te
+// Robot co backward drift nhe -> BIAS = -0.2 (lean nhe forward)
+#define TARGET_ANGLE_BIAS  -0.2f
+
+// Velocity filter (low-pass) de bot transient spike
+#define VEL_FILTER_ALPHA 0.6f    // 0=khong filter, 0.9=filter manh
+
+// --- Stepper / motor ---
+#define MICROSTEP          8
+#define MAX_STEPS_PER_SEC  5500   // 4000 -> 5500: them headroom de catch fall manh
+#define MAX_ACCEL          1200   // 800 -> 1200: motor phan ung nhanh hon khi bi day
+#define MIN_STEP_RATE      30     // Duoi nguong nay coi nhu dung
+#define ZERO_SPEED         32000  // Sentinel cho "motor dung" (gia tri OCR1A khi dung)
+
+// --- An toan ---
+#define FALL_ANGLE         30.0f
+#define RECOVER_ANGLE      1.5f
+#define RECOVER_GYRO       30.0f
+
+// --- Vong dieu khien ---
+#define LOOP_PERIOD_US     10000UL   // 100Hz
+#define VEL_LOOP_DIVIDER   10        // Vong velocity = 100Hz / 10 = 10Hz
+
+// --- Complementary filter ---
+// 0.98 -> 0.97 + software filter accel:
+//   accel raw bi noise tu motor vibration -> smooth truoc
+//   Sau khi smooth, co the pull manh hon (ALPHA thap hon) ma khong sao
+#define ALPHA              0.97f
+#define ACCEL_LPF_ALPHA    0.7f    // Loc accel mem hon, 0.7=loc vua, 0.9=loc manh
+
+// ============================================================
+// BIEN TOAN CUC
+// ============================================================
+float angle           = 0;     // Goc nghieng filtered (do)
+float gyroBias        = 0;     // Offset gyro (raw)
+float upright_offset  = 0;     // Offset accel khi robot dung thang (do)
+
+// Inner PID state
+float pidI_angle      = 0;
+
+// Outer PID state
+float target_angle    = 0;     // Setpoint dong, do velocity loop dieu chinh
+float pidI_vel        = 0;
+long  last_steps_avg  = 0;
+
+// Speed ramping
+int16_t current_speed = 0;     // Toc do hien tai sau ramping (chung cho 2 motor)
+
+// === BLUETOOTH REMOTE CONTROL ===
+// Nhan lenh tu HC-05 qua Serial (D0/D1)
+float bt_drive    = 0;         // -1.5 .. +1.5 do, them vao target_angle (tien/lui)
+int16_t bt_turn   = 0;         // -300 .. +300 step/s, motor R - motor L
+#define BT_DRIVE_STEP   0.4f   // Moi lan F/B nhan thay doi target nay
+#define BT_DRIVE_MAX    1.5f
+#define BT_TURN_STEP    100    // Moi lan L/R nhan thay doi turn nay
+#define BT_TURN_MAX     300
+
+// Trang thai
+bool fallen           = false;
+
+// === Volatile state truy cap trong ISR ===
+volatile uint16_t periodL = ZERO_SPEED;   // ticks giua 2 step (ticks=0.5us @ Timer1 prescaler 8)
+volatile uint16_t periodR = ZERO_SPEED;
+volatile int8_t   dirSignL = 0;            // -1, 0, +1 (cho buoc dem)
+volatile int8_t   dirSignR = 0;
+volatile long     stepsL = 0;              // Buoc da chay (signed, cho tinh van toc)
+volatile long     stepsR = 0;
+
+// Timing
+unsigned long last_loop_us = 0;
+
+// ============================================================
+// TIMER1 ISR - Phat xung step (precise)
+// ============================================================
+//  Timer1: 16-bit, prescaler 8 -> 2 MHz tick (0.5us/tick)
+//  Dung 2 channel doc lap: OCR1A cho motor L, OCR1B cho motor R
+//  Khi compare match: phat 1 xung step (HIGH ngan roi LOW)
+//                     va lich next interrupt = OCR + period
+
+ISR(TIMER1_COMPA_vect) {
+  OCR1A += periodL;                    // Lich next compare
+  if (periodL >= ZERO_SPEED) return;   // Motor dung -> bo qua
+  STEP_L_HIGH();
+  // Cap nhat step counter chiem ~20 cycles = 1.25us > 1us yeu cau cua A4988
+  stepsL += dirSignL;
+  STEP_L_LOW();
+}
+
+ISR(TIMER1_COMPB_vect) {
+  OCR1B += periodR;
+  if (periodR >= ZERO_SPEED) return;
+  STEP_R_HIGH();
+  stepsR += dirSignR;
+  STEP_R_LOW();
+}
+
+void initTimer1() {
+  noInterrupts();
+  TCCR1A = 0;
+  TCCR1B = 0;
+  TCNT1  = 0;
+  TCCR1B |= (1 << CS11);              // Prescaler 8 -> 2MHz
+  OCR1A   = TCNT1 + ZERO_SPEED;
+  OCR1B   = TCNT1 + ZERO_SPEED;
+  TIFR1   = (1 << OCF1A) | (1 << OCF1B);  // Clear flag
+  TIMSK1  = (1 << OCIE1A) | (1 << OCIE1B);
+  interrupts();
+}
+
+// ============================================================
+// SET MOTOR SPEED (voi acceleration ramping + turn support)
+// ============================================================
+//  base_speed: toc do trung binh, -MAX..+MAX step/s
+//  turn_offset: chenh lech R - L (R nhanh hon -> re trai, ngugc lai)
+//  Ramping ap dung tren base_speed
+void setMotorSpeed(int16_t target_speed) {
+  // Ramping tren base_speed
+  if (target_speed > current_speed + MAX_ACCEL)
+    current_speed += MAX_ACCEL;
+  else if (target_speed < current_speed - MAX_ACCEL)
+    current_speed -= MAX_ACCEL;
+  else
+    current_speed = target_speed;
+
+  // Ap dung turn offset
+  int16_t left_speed  = current_speed - bt_turn;
+  int16_t right_speed = current_speed + bt_turn;
+  setSingleMotor(true,  left_speed);   // motor trai
+  setSingleMotor(false, right_speed);  // motor phai
+}
+
+// Helper: set 1 motor (left=true cho L, false cho R)
+void setSingleMotor(bool isLeft, int16_t speed) {
+  int8_t sign;
+  uint16_t absspeed;
+  if (speed >= 0) { sign = +1; absspeed = speed; }
+  else            { sign = -1; absspeed = -speed; }
+
+  // DIR pin (motor R dao chieu vi gan doi xung)
+  if (isLeft) {
+    if (sign > 0) DIR_L_HIGH(); else DIR_L_LOW();
+  } else {
+    if (sign > 0) DIR_R_LOW();  else DIR_R_HIGH();
+  }
+
+  // Period
+  uint16_t newPeriod;
+  if (absspeed < MIN_STEP_RATE) {
+    newPeriod = ZERO_SPEED;
+  } else {
+    uint32_t p = 2000000UL / absspeed;
+    if (p >= ZERO_SPEED) newPeriod = ZERO_SPEED;
+    else                 newPeriod = (uint16_t)p;
+  }
+
+  noInterrupts();
+  if (isLeft) {
+    bool was_stopped = (periodL >= ZERO_SPEED);
+    periodL  = newPeriod;
+    dirSignL = (newPeriod >= ZERO_SPEED) ? 0 : sign;
+    if (was_stopped && newPeriod < ZERO_SPEED) {
+      OCR1A = TCNT1 + 100;
+    }
+  } else {
+    bool was_stopped = (periodR >= ZERO_SPEED);
+    periodR  = newPeriod;
+    dirSignR = (newPeriod >= ZERO_SPEED) ? 0 : sign;
+    if (was_stopped && newPeriod < ZERO_SPEED) {
+      OCR1B = TCNT1 + 100 + (newPeriod >> 1);
+    }
+  }
+  interrupts();
+}
+
+void stopMotors() {
+  noInterrupts();
+  periodL = ZERO_SPEED;
+  periodR = ZERO_SPEED;
+  dirSignL = 0;
+  dirSignR = 0;
+  interrupts();
+  current_speed = 0;
+}
+
+void enableMotors()  { digitalWrite(ENABLE_PIN, LOW);  }
+void disableMotors() { digitalWrite(ENABLE_PIN, HIGH); }
+
+// ============================================================
+// MPU-6050
+// ============================================================
+void writeMPU(uint8_t reg, uint8_t val) {
+  Wire.beginTransmission(MPU_ADDR);
+  Wire.write(reg); Wire.write(val);
+  Wire.endTransmission(true);
+}
+
+void readMPU(int16_t *ax, int16_t *ay, int16_t *az,
+             int16_t *gx, int16_t *gy, int16_t *gz) {
+  Wire.beginTransmission(MPU_ADDR);
+  Wire.write(0x3B);
+  Wire.endTransmission(false);
+  Wire.requestFrom((uint8_t)MPU_ADDR, (uint8_t)14, (uint8_t)true);
+  *ax = (Wire.read() << 8) | Wire.read();
+  *ay = (Wire.read() << 8) | Wire.read();
+  *az = (Wire.read() << 8) | Wire.read();
+  Wire.read(); Wire.read();              // bo qua nhiet do
+  *gx = (Wire.read() << 8) | Wire.read();
+  *gy = (Wire.read() << 8) | Wire.read();
+  *gz = (Wire.read() << 8) | Wire.read();
+}
+
+void initMPU() {
+  Wire.begin();
+  Wire.setClock(400000);
+  writeMPU(0x6B, 0x00);   // Wake
+  writeMPU(0x1B, 0x00);   // Gyro ±250°/s -> 131 LSB/(°/s)
+  writeMPU(0x1C, 0x00);   // Accel ±2g
+  writeMPU(0x1A, 0x04);   // DLPF ~21Hz, delay 8.5ms - loc rung stepper
+                          // Co the giam them 0x05 (10Hz) neu van rung
+  delay(100);
+}
+
+// Goc tu accelerometer (giu nguyen cong thuc v1, them upright_offset)
+float calcAccelAngleRaw(int16_t ay, int16_t az) {
+  return atan2f((float)-ay, (float)az) * 57.2957795f;
+}
+
+// Calibrate: lay 1000 mau khi robot dung yen
+//  - gyroBias: trung binh gx
+//  - upright_offset: trung binh accelAngle (== goc bias khi cam dung thang)
+void calibrate() {
+  Serial.println(F("Calib: GIU robot DUNG THANG va im trong 4 giay..."));
+  delay(2500);
+
+  long sumGx = 0;
+  float sumAng = 0;
+  const int N = 1000;
+  for (int i = 0; i < N; i++) {
+    int16_t ax, ay, az, gx, gy, gz;
+    readMPU(&ax, &ay, &az, &gx, &gy, &gz);
+    sumGx  += gx;
+    sumAng += calcAccelAngleRaw(ay, az);
+    delay(2);
+  }
+  gyroBias       = (float)sumGx / N;
+  upright_offset = sumAng / N;
+  Serial.print(F("  gyroBias = "));      Serial.println(gyroBias, 2);
+  Serial.print(F("  upright_offset = ")); Serial.println(upright_offset, 2);
+}
+
+// ============================================================
+// SETUP
+// ============================================================
+void setup() {
+  // 9600 baud cho HC-05 default (tang len 38400 sau khi setup AT mode)
+  Serial.begin(9600);
+  Serial.println(F("=== ROBOT BALANCE v3 + BT ==="));
+
+  // Pin modes
+  pinMode(2, OUTPUT); pinMode(3, OUTPUT);
+  pinMode(5, OUTPUT); pinMode(6, OUTPUT);
+  pinMode(ENABLE_PIN, OUTPUT);
+  disableMotors();
+
+  // MPU
+  initMPU();
+  Serial.println(F("MPU OK"));
+
+  // Calibrate (4 seconds, hold robot upright)
+  calibrate();
+
+  // Doc goc khoi tao
+  int16_t ax, ay, az, gx, gy, gz;
+  readMPU(&ax, &ay, &az, &gx, &gy, &gz);
+  angle = calcAccelAngleRaw(ay, az) - upright_offset;
+  Serial.print(F("Goc ban dau: ")); Serial.println(angle, 2);
+
+  // Khoi tao Timer1 ISR
+  initTimer1();
+
+  // Bat motor
+  enableMotors();
+  delay(100);
+
+  Serial.println(F("Bat dau!"));
+  Serial.println(F("angle\taccel\ttargetA\tgyroR\tspeed\tstepsL\tstepsR"));
+
+  last_loop_us = micros();
+}
+
+// ============================================================
+// BLUETOOTH COMMAND PARSER
+// ============================================================
+// Lenh 1 ky tu (gui qua app Serial Bluetooth Terminal):
+//   F = forward (+target_angle)    B = backward (-target_angle)
+//   L = turn left  (R faster)      R = turn right (L faster)
+//   S = stop tien/lui/quay         P = print PID gains
+void handleBTCommand() {
+  while (Serial.available() > 0) {
+    char c = Serial.read();
+    switch (c) {
+      case 'F': case 'f':
+        bt_drive = constrain(bt_drive + BT_DRIVE_STEP, -BT_DRIVE_MAX, BT_DRIVE_MAX);
+        Serial.print(F("> drive=")); Serial.println(bt_drive, 2);
+        break;
+      case 'B': case 'b':
+        bt_drive = constrain(bt_drive - BT_DRIVE_STEP, -BT_DRIVE_MAX, BT_DRIVE_MAX);
+        Serial.print(F("> drive=")); Serial.println(bt_drive, 2);
+        break;
+      case 'L': case 'l':
+        bt_turn = constrain(bt_turn - BT_TURN_STEP, -BT_TURN_MAX, BT_TURN_MAX);
+        Serial.print(F("> turn=")); Serial.println(bt_turn);
+        break;
+      case 'R': case 'r':
+        bt_turn = constrain(bt_turn + BT_TURN_STEP, -BT_TURN_MAX, BT_TURN_MAX);
+        Serial.print(F("> turn=")); Serial.println(bt_turn);
+        break;
+      case 'S': case 's':
+        bt_drive = 0;
+        bt_turn  = 0;
+        Serial.println(F("> STOP"));
+        break;
+      case 'P': case 'p':
+        Serial.print(F("Kp=")); Serial.print(Kp_angle);
+        Serial.print(F(" Kd=")); Serial.print(Kd_angle);
+        Serial.print(F(" Kpv=")); Serial.print(Kp_vel, 4);
+        Serial.print(F(" Kiv=")); Serial.println(Ki_vel, 4);
+        break;
+    }
+  }
+}
+
+// ============================================================
+// LOOP - 100Hz fixed rate
+// ============================================================
+uint8_t  vel_counter  = 0;
+uint8_t  dbg_counter  = 0;
+
+void loop() {
+  // Xu ly lenh BT moi vong (khong block)
+  handleBTCommand();
+
+  // === Cho den next loop tick (100Hz) ===
+  unsigned long now = micros();
+  unsigned long elapsed = now - last_loop_us;
+  if (elapsed < LOOP_PERIOD_US) return;
+  float dt = elapsed / 1000000.0f;
+  last_loop_us = now;
+
+  // === 1. Doc MPU + Complementary filter ===
+  int16_t ax, ay, az, gx, gy, gz;
+  readMPU(&ax, &ay, &az, &gx, &gy, &gz);
+  float gyro_rate     = -((float)gx - gyroBias) / 131.0f;
+  float accel_raw     = calcAccelAngleRaw(ay, az) - upright_offset;
+  // Software low-pass tren accel de bot motor vibration noise
+  static float accel_angle = 0;
+  accel_angle = ACCEL_LPF_ALPHA * accel_angle + (1.0f - ACCEL_LPF_ALPHA) * accel_raw;
+  angle = ALPHA * (angle + gyro_rate * dt) + (1.0f - ALPHA) * accel_angle;
+
+  // === 2. An toan ===
+  // Check CA filtered angle VA raw accel angle (de tranh filter drift bypass safety)
+  // Neu accel raw bao nghieng > FALL thi 100% robot dang nga, du filter chua catch up
+  bool filter_fall = (fabsf(angle) > FALL_ANGLE);
+  bool accel_fall  = (fabsf(accel_angle) > FALL_ANGLE);
+  if (filter_fall || accel_fall) {
+    if (!fallen) {
+      fallen = true;
+      stopMotors();
+      disableMotors();
+      pidI_angle  = 0;
+      pidI_vel    = 0;
+      target_angle = 0;
+      // Neu accel phat hien -> filter da drift, force re-sync angle = accel
+      if (accel_fall && !filter_fall) {
+        Serial.println(F("[!] FALLEN (filter drift! resync angle)"));
+        angle = accel_angle;  // Reset filter ve true angle
+      } else {
+        Serial.println(F("[!] FALLEN"));
+      }
+    }
+    return;
+  }
+  if (fallen) {
+    if (fabsf(angle) < RECOVER_ANGLE && fabsf(gyro_rate) < RECOVER_GYRO) {
+      fallen = false;
+      noInterrupts(); stepsL = 0; stepsR = 0; interrupts();
+      last_steps_avg = 0;
+      enableMotors();
+      Serial.println(F("[+] RECOVERED"));
+    } else {
+      return;
+    }
+  }
+
+  // === 3. VONG NGOAI: Velocity PID -> dieu chinh target_angle (10Hz) ===
+  if (++vel_counter >= VEL_LOOP_DIVIDER) {
+    vel_counter = 0;
+
+    // Doc step counters atomic
+    noInterrupts();
+    long stepsAvg = (stepsL + stepsR) / 2;
+    interrupts();
+
+    // Van toc = delta steps trong 100ms (don vi: steps/100ms)
+    long velocity = stepsAvg - last_steps_avg;
+    last_steps_avg = stepsAvg;
+
+    // Low-pass filter velocity de bot transient spike
+    static float vel_filtered = 0;
+    vel_filtered = VEL_FILTER_ALPHA * vel_filtered
+                 + (1.0f - VEL_FILTER_ALPHA) * (float)velocity;
+
+    // Sai so van toc: muon = 0
+    float vel_err = -vel_filtered * VEL_DIR;
+    // Anti-windup: chi tich luy Ki khi robot gan can bang (|angle| < 5)
+    // Khi nghieng manh -> dong bang Ki, focus on catch-fall (khong fight inner loop)
+    if (fabsf(angle) < 5.0f) {
+      pidI_vel += vel_err;
+      pidI_vel  = constrain(pidI_vel, -500.0f, 500.0f);
+    }
+
+    // bt_drive them vao target_angle de robot tien/lui khi co lenh BT
+    target_angle = TARGET_ANGLE_BIAS + Kp_vel * vel_err + Ki_vel * pidI_vel + bt_drive;
+    target_angle = constrain(target_angle, -MAX_TARGET_OFFSET - 2.0f, MAX_TARGET_OFFSET + 2.0f);
+  }
+
+  // === 4. VONG TRONG: Angle PID (100Hz) ===
+  float angle_err = target_angle - angle;
+  pidI_angle += angle_err * dt;
+  pidI_angle  = constrain(pidI_angle, -200.0f, 200.0f);
+
+  // D-term: dung gyro_rate truc tiep (it nhieu hon sai phan goc)
+  // d(error)/dt = -d(angle)/dt = -gyro_rate
+  float d_term = -gyro_rate;
+
+  float pid_out = Kp_angle * angle_err
+                + Ki_angle * pidI_angle
+                + Kd_angle * d_term;
+  pid_out = constrain(pid_out,
+                      -(float)MAX_STEPS_PER_SEC,
+                      +(float)MAX_STEPS_PER_SEC);
+
+  // === 5. Output -> motor (voi acceleration ramping) ===
+  setMotorSpeed((int16_t)pid_out);
+
+  // === 6. Debug ===
+  if (++dbg_counter >= 20) {           // 5Hz print
+    dbg_counter = 0;
+    Serial.print(angle, 2);        Serial.print('\t');
+    Serial.print(accel_angle, 2);  Serial.print('\t');  // De theo doi drift filter vs accel
+    Serial.print(target_angle, 2); Serial.print('\t');
+    Serial.print(gyro_rate, 1);    Serial.print('\t');
+    Serial.print(current_speed);   Serial.print('\t');
+    noInterrupts();
+    long sl = stepsL, sr = stepsR;
+    interrupts();
+    Serial.print(sl); Serial.print('\t');
+    Serial.println(sr);
+  }
+}

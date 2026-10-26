@@ -1,0 +1,87 @@
+# ─────────────────────────────────────────────────────────────────────
+# BỘ THAM SỐ CÂN BẰNG — đo 2026-10-25
+#
+#   angle σ = 0.272°   ·   99% thời gian trong ±1°
+#   88 giây liên tục, 0 reset
+#   trôi 0.064 cm/s (trước khi có vòng vị trí: 1.04 cm/s)
+#
+# Định dạng: mỗi dòng một lệnh, gửi theo đúng thứ tự.
+# Dòng trống và dòng bắt đầu bằng # bị bỏ qua.
+# Nạp bằng:  cfg balance_good     (trong robot_control.py)
+# ─────────────────────────────────────────────────────────────────────
+
+# ── KIẾN TRÚC — bắt buộc, không có cái này thì không bao giờ cân bằng được ──
+# arch 0 ra lệnh TỐC ĐỘ: bánh lăn đều không sinh ra lực, robot nghiêng cố định
+# thì không có gì kéo về. arch 1 ra lệnh GIA TỐC rồi tích phân thành tốc độ.
+ARCH 1
+
+# ── Vòng trong: góc, 100Hz ──
+# kp 45 ≈ 4.6× trọng lực. Điểm hoà là 9.7 — dưới mức đó không cứu được gì.
+# kd 2.5 cho ζ≈0.7. KHÔNG chép tỉ lệ Kd/Kp của B-ROBOT (≈15): robot đó cao hơn,
+# cực chậm hơn; áp vào đây ra kd 180, đẩy cực chậm nhất về −0.11 rad/s (9 giây).
+KP 45
+KD 2.5
+KI 0
+
+# ── Vòng giữa: vận tốc, 10Hz ──
+# VDIR 1 là DẤU ĐÚNG. Mặc định cũ −1 là PHẢN HỒI DƯƠNG, tự khuếch đại trôi.
+# Đổi dấu làm angle σ giảm một nửa (1.41 → 0.48).
+# kpv giữ thấp: 0.03 làm σ tệ gấp 4, 0.06 làm đổ. Chỉnh kiv nếu cần, đừng chỉnh kpv.
+VDIR 1
+KPV 0.008
+KIV 0.001
+VFA 0.7
+MTO 3
+BIAS 0
+
+# ── Goc lap MPU tren khung (HANG SO CO KHI, do 1 lan) ──
+# Do 25/10/2026: robot dang can bang on dinh, 'target' dung im o +1.89..+2.10 do
+# qua 3 lan do. Do chinh la goc robot phai nghieng so voi cai ma accel coi la
+# "thang" thi moi giu duoc vi tri => chinh la UPOFF can dat.
+# De UPOFF=0 thi moi lan boot vong toc do phai tich phan hang chuc giay moi bo
+# toi 2 do -> dung cai "troi ve mot phia" luc moi dung.
+# DA LUU EEPROM 25/10/2026, dong nay chi de dong bo khi 'reset'.
+# KHONG gui lenh nay luc robot DANG DUNG: angle bi keo ve accel voi hang so
+# thoi gian 0.33s trong khi target khong doi -> sai so 2 do x kp45 tich phan
+# -> cham tran toc do trong ~0.3s -> robot lao di va do.
+UPOFF 2.0
+
+# ── Vòng ngoài: vị trí ──
+# Dùng stepsL/stepsR tích luỹ để robot quay VỀ CHỖ CŨ, không chỉ dừng lại.
+# 0.05 quá nhanh → chu trình giới hạn 0.33Hz (σ 1.86). 0.015 là vừa.
+# Nguyên tắc: vòng ngoài phải CHẬM HƠN vòng trong nó bọc.
+KPPOS 0.015
+# VMAX 200 (=2000 step/s) qua cao: do 25/10/2026, luc lech 1m vong vi tri doi
+# 872 step/s va duoc cho het -> speed leo toi tran 3000 trong 2.5s roi nga.
+VMAX 40
+
+# ── Lenh lai = lenh TOC DO BANH ──
+# DRIVE 1.0 -> 20 steps/100ms = 200 step/s = 3.5 cm/s. DRVMAX 1.5 -> 5.3 cm/s.
+# Truoc 25/10 bt_drive cong thang vao target_angle, vo dung: trong tam cao 59mm
+# nen nghieng 1 do chi sinh ~10 mN.m, nho hon momen detent NEMA17 (10-16 mN.m).
+DRVVEL 20
+
+# ── Giới hạn motor ──
+# acc 350 ≈ 6.2 m/s², khớp mô-men thật của motor. Cũ 1500 = 26.5 m/s² → trượt bước.
+# spd 3000 chặn dòng nếu khâu tích phân của arch 1 chạy loạn.
+ACC 350
+SPD 3000
+
+# ── Bộ lọc ──
+ALPHA 0.97
+ALPF 0.85
+DLPF 5
+
+# ── An toàn ──
+FALL 45
+REC 10
+RECG 100
+
+# ── Lái từ xa ──
+DRVSTEP 0.4
+DRVMAX 1.5
+TRNSTEP 100
+TRNMAX 300
+
+# Xoá tích phân, chốt mốc vị trí về chỗ robot đang đứng
+S
