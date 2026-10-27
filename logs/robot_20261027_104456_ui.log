@@ -1,0 +1,89 @@
+10:44:56  đang nối lại...
+10:45:11  nối lỗi: TimeoutError
+10:45:14  đang nối lại...
+10:45:14  nối lỗi: OSError
+10:45:17  đang nối lại...
+10:45:17  nối lỗi: OSError
+10:45:20  đang nối lại...
+10:45:20  nối lỗi: OSError
+10:45:23  đang nối lại...
+10:45:23  nối lỗi: OSError
+10:45:26  đang nối lại...
+10:45:26  nối lỗi: OSError
+10:45:29  đang nối lại...
+10:45:29  nối lỗi: OSError
+10:45:32  đang nối lại...
+10:45:32  nối lỗi: OSError
+10:45:35  đang nối lại...
+10:45:35  nối lỗi: OSError
+10:45:38  đang nối lại...
+10:45:38  nối lỗi: OSError
+10:45:41  đang nối lại...
+10:45:41  nối lỗi: OSError
+10:45:44  đang nối lại...
+10:45:44  nối lỗi: OSError
+10:45:47  đang nối lại...
+10:45:47  nối lỗi: OSError
+10:45:50  đang nối lại...
+10:45:53  nối lỗi: OSError
+10:45:56  đang nối lại...
+10:46:02  đã kết nối 00:21:06:08:1C:D4
+10:46:03  cột: ms angle accel target gyro speed stepsL stepsR
+10:46:26  > KD=6.0000
+10:46:27  > KD=6.0000
+10:46:28  > SPD=2000.0000
+10:46:28  > SPD=2000.0000
+10:46:51  ���&j
+10:46:52  [!] FALLEN
+10:47:02  im lặng 8s -> coi như đứt, nối lại
+10:47:02  đang nối lại...
+10:47:15  đã kết nối 00:21:06:08:1C:D4
+10:47:16  cột: ms angle accel target gyro speed stepsL stepsR
+10:47:31  > KD=6.0000
+10:47:32  > SPD=2000.0000
+10:47:33  > UPOFF=2.0000
+10:47:34  > KPPOS=0.0150
+10:47:35  > VMAX=40.0000
+10:47:36  > LOADED
+10:47:39  > KD=2.5000
+10:47:40  > SPD=3000.0000
+10:48:10  > LOGDIV=5.0000
+10:48:18  > LOGDIV=1.0000
+10:48:58  > KD=2.5000
+10:48:58  > SPD=3000.0000
+10:48:59  > KD=3.3000
+10:48:59  > SPD=2500.0000
+10:49:01  > KD=3.3000
+10:49:02  > SPD=2500.0000
+10:49:02  > LOADED
+10:49:06  > KD=2.5000
+10:49:07  > SPD=3000.0000
+10:49:35  Calib gyro: giu robot IM 4 giay (tu the nao cung duoc)...
+10:49:40  gyroBias = -321.80
+10:49:40  > gyro recalibrated
+10:49:47  > KD=6.0000
+10:49:48  > KD=6.0000
+10:49:50  > SPD=2000.0000
+10:49:51  > SPD=2000.0000
+10:49:52  > SAVED to EEPROM
+10:49:54  > KD=3.3000
+10:49:54  > SPD=2500.0000
+10:49:56  > KD=3.3000
+10:49:57  > SPD=2500.0000
+10:49:58  > LOADED
+10:50:02  > KD=6.0000
+10:50:02  > SPD=2000.0000
+10:51:26  im lặng 8s -> coi như đứt, nối lại
+10:51:26  đang nối lại...
+10:51:41  đã kết nối 00:21:06:08:1C:D4
+10:51:42  cột: ms angle accel target gyro speed stepsL stepsR
+10:51:59  > drive=0.00
+10:51:59  > turn=0
+10:54:18  > KD=6.0000
+10:54:19  > SPD=2000.0000
+10:54:20  > KPPOS=0.0150
+10:54:21  > KIV=0.0010
+10:54:22  > KPPOS=0.0150
+10:55:04  > KPPOS=0.0050
+10:55:47  > KPPOS=0.0000
+10:56:29  > KPPOS=0.0150

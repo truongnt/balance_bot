@@ -1049,6 +1049,51 @@ Bluetooth link dropped in the same second, and the robot was left holding `KD 10
 an unstable value. EEPROM still held the old one, so a power cycle recovered it, but a
 sweep script should write the safe value *and confirm the echo* before moving on.
 
+### Gyro bias was eating 90% of the velocity integral — 2026-10-27
+Mining a clean `kd 6` segment produced a number that tied two loose observations together:
+
+```
+gyro mean        +1.392 deg/s     (should be within +-0.2)
+drift mean       +0.453 deg
+```
+
+The complementary filter's steady-state error is `alpha*b*dt/(1-alpha)` =
+`0.97 x 1.392 x 0.01 / 0.03` = **0.450 deg**, against 0.453 measured. So `angle` was reading
+a fixed 0.45° high, purely from calibration.
+
+To hold position with that offset, the velocity loop has to trim `target` by 0.45°, which
+needs `Ki_vel * pidI_vel = 0.45`, i.e. `pidI_vel ≈ 450` against a ±500 clamp. That is why
+`ivel` read a pinned +500 every single time it was inspected that day — **90% of the
+integral budget was spent compensating a calibration error**, and it also explains why
+driving through the velocity loop stalled at 0.74° of lean: the budget was already gone
+before the drive command could use any of it.
+
+After `cal`: `gyro` mean **−0.008 °/s**, drift **−0.003°**.
+
+`gyroBias` is not an EEPROM parameter — it is re-measured at every boot. On a robot that
+was rebooting every few minutes from a loose connection, a good calibration does not
+survive, so this is not something software can hold onto.
+
+### The position loop suppresses the 0.64 Hz mode, it does not cause it
+`KPPOS` swept over 28 s of undisturbed data each:
+
+| `KPPOS` | `angle` σ | peak | `speed` σ | drift | spectral peak |
+|---|---|---|---|---|---|
+| 0.015 | 0.083° | 1.82° | 57 | **0.01 cm** | 5.68 Hz |
+| 0.005 | **0.067°** | 1.26° | 47 | 0.19 cm | 5.68 Hz |
+| 0 | 0.193° | 3.36° | 68 | 0.58 cm | **0.64 Hz** |
+
+Turning the loop **off** brings the 0.64 Hz oscillation back and doubles the angle
+deviation. 0.015 and 0.005 are within noise of each other; 0.015 holds position twenty
+times better, so it stays.
+
+**A disturbance at the end of a window will invent a tuning problem.** The first pass over
+this data reported `KPPOS 0.005` as catastrophic (σ 1.289°, 41 cm of drift, a 0.11 Hz
+oscillation) and prompted a conclusion that the outer loop was self-oscillating. Breaking
+the window into 4-second slices showed 28 s of calm at |angle| ≈ 0.59° followed by a single
+event reaching 12°. The same artefact had already corrupted a 60 s baseline. **Slice a
+window before trusting its standard deviation**, especially on a robot that gets bumped.
+
 ### Still unmeasured
 - **Push recovery.** Still the oldest open complaint ("tác động vào là trôi luôn"). With
   `kd 2.5` the damping ratio works out near ζ ≈ 0.17, which is exactly what "gets shoved and

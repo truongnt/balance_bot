@@ -71,7 +71,11 @@ DRVVEL 20
 # acc 350 ≈ 6.2 m/s², khớp mô-men thật của motor. Cũ 1500 = 26.5 m/s² → trượt bước.
 # spd 3000 chặn dòng nếu khâu tích phân của arch 1 chạy loạn.
 ACC 350
-SPD 3000
+# SPD 2000, khong phai 3000. DO 27/10/2026: luc can bang binh thuong dinh
+# |speed| chi 333, phan vi 99% toan bo du lieu la 1857. Nhung 0.54% thoi gian
+# no ghim sat 3000 — do la cac cu lao. Ha tran khong dung gi toi 99% hoat dong
+# binh thuong ma giam thiet hai mot cu lao tu 53 cm/s xuong 35 cm/s.
+SPD 2000
 
 # ── Bộ lọc ──
 ALPHA 0.97

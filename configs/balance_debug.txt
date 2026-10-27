@@ -53,7 +53,7 @@ DRVVEL 20
 # acc 350 ≈ 6.2 m/s², khớp mô-men thật của motor. Cũ 1500 = 26.5 m/s² → trượt bước.
 # spd 3000 chặn dòng nếu khâu tích phân của arch 1 chạy loạn.
 ACC 350
-SPD 3000
+SPD 2000
 
 # ── Bộ lọc ──
 ALPHA 0.97
