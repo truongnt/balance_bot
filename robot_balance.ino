@@ -466,7 +466,11 @@ void calibrateUpright() {
 // ============================================================
 void setup() {
   Serial.begin(115200);
-  Serial.println(F("=== ROBOT BALANCE v3 + BT ==="));
+  // Banner mang luon MA PHIEN BAN. Nho the, mo Serial Monitor sau khi nap la
+  // biet ngay chip chay ban nao — khong phai suy tu hanh vi, khong phai hoi ai.
+  Serial.print(F("=== ROBOT BALANCE "));
+  Serial.print(F(FW_VERSION));
+  Serial.println(F(" ==="));
 
   // Load params tu EEPROM (neu co), neu khong dung gia tri mac dinh
   if (loadParams()) {
