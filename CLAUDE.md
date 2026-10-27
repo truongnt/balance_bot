@@ -1234,10 +1234,28 @@ The device signature is `1E 95 0F`, which **does not identify the chip** — ATm
 the LGT8F328P clone share it, and avrdude lists both. The board enumerates as a USB CDC
 device (`VID_0843&PID_5740`), not the 16U2 or CH340 of a normal Uno.
 
-Worth trying, cheapest first: a different USB cable and port (a bootloader receiving
-corrupted pages may skip them and still ACK); then reflashing the bootloader over ISP with
-another Arduino, which also performs a real chip erase and clears any lock bits; then
-replacing the board.
+**Confirmed as the board, not the PC, 2026-10-27.** Every external factor was eliminated
+in turn and none of them was the cause:
+
+| eliminated | how |
+|---|---|
+| Duplicate COM name | the board was renumbered to COM12; it is now unique |
+| USB hub | moved to a direct port (`LOCATION=1-6`, no dots) |
+| Another process holding the port | all Arduino IDE and stray avrdude processes killed |
+| Cable | the same UART carries 115200 telemetry with zero corrupt lines |
+| Wrong command or stale cache | `compile --upload` in one invocation, correct FQBN |
+
+With all of that clean, a **2024-byte** sketch still reported `bytes of flash written` and
+the board still booted the robot firmware.
+
+**The decisive test was a second board.** A genuine Arduino Mega 2560 (`VID:PID=2341:0042`)
+on the same PC, same cable, same toolchain, took the same test sketch and ran it
+immediately — `FLASHTEST-OK` on the serial line. The toolchain is fine. The Uno clone's
+flash is not writable.
+
+Two routes from here: reflash the clone's bootloader over ISP using the Mega, which does a
+real chip erase and clears any lock bits; or replace the board. Note that the clone also
+produced **9 spontaneous resets** on 2026-10-26, so a failing chip would explain both.
 
 Until then **every parameter has to be set over Bluetooth and saved to EEPROM**, which
 still works. What cannot be changed is anything compiled in — including the forward/back

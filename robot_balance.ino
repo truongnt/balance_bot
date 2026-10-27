@@ -106,7 +106,7 @@ int16_t max_accel          = 350;   // B-ROBOT EVO2: MAX_ACCEL 14 x25 (1/8 step)
 // Hoi bang lenh "VER" qua BT/USB, va in luon trong banner khoi dong.
 // Co cai nay thi khong bao gio phai suy ra "chip dang chay ban nao" tu hanh vi
 // nua — 26/10 da suy sai hai lan, trong khi lenh nap van bao thanh cong.
-#define FW_VERSION "2026-10-27a-drive"
+#define FW_VERSION "2026-10-27a-drive_1211111111111111111111111111111111111111111111111111111"
 
 // --- An toan --- tune LIVE qua "fall 45 / rec 10 / recg 100"
 float fall_angle    = 45.0f;
