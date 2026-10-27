@@ -35,6 +35,14 @@ import time
 
 import serial.tools.list_ports as list_ports
 
+LOG_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logs")
+
+
+def io_open(path, text):
+    with open(path, "w", encoding="utf-8", errors="replace") as f:
+        f.write(text)
+
+
 CLI = r"C:\Program Files\Arduino CLI\arduino-cli.exe"
 SKETCH = os.path.dirname(os.path.abspath(__file__))
 FQBN = "arduino:avr:uno"
@@ -78,19 +86,49 @@ def upload(port, attempt):
     Biên dịch trong cùng lệnh thì binary chắc chắn khớp mã nguồn.
     """
     print(f"\n--- lần {attempt}: biên dịch + nạp vào {port} (hạn {TIMEOUT}s) ---", flush=True)
-    p = subprocess.Popen([CLI, "compile", "--upload", "-p", port,
+    # -v: avrdude in ra "bytes of flash written" va "bytes of flash verified".
+    # Khong co co nay thi arduino-cli nuot het, chi con ma thoat — ma ma thoat 0
+    # DA TUNG bao thanh cong trong khi chip van chay code cu (26/10).
+    # -v  : lo het log avrdude
+    # -t  : BAT doi chieu lai sau khi ghi. arduino-cli mac dinh truyen -V cho
+    #       avrdude (bo qua doi chieu), nen khong co co nay thi log chi co dong
+    #       "written" va khong bao gio chung minh duoc flash dung noi dung.
+    # KHONG dung -t tren board nay: bootloader khong ho tro doc nguoc flash,
+    # moi dia chi deu tra ve 0x62 nen doi chieu LUON that bai (do 27/10). Xac
+    # minh bang lenh VER qua serial sau khi nap, dung bang verify.
+    p = subprocess.Popen([CLI, "compile", "--upload", "-v", "-p", port,
                           "--fqbn", FQBN, SKETCH],
                          stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     try:
         out, _ = p.communicate(timeout=TIMEOUT)
-        lines = (out or "").strip().splitlines()
-        # In dong kich thuoc: doi chieu duoc voi lan bien dich truoc.
+        lines = (out or "").splitlines()
+
+        # Giu toan bo log de doc lai khi can.
+        os.makedirs(LOG_DIR, exist_ok=True)
+        path = os.path.join(LOG_DIR, f"upload_{time.strftime('%Y%m%d_%H%M%S')}.log")
+        io_open(path, out or "")
+        print(f"   log day du -> {path}")
+
         for ln in lines:
             if "program storage" in ln or "dynamic memory" in ln:
                 print("   |", ln.strip()[:100])
-        for ln in lines[-3:]:
-            print("   |", ln[:100])
-        return p.returncode == 0
+
+        # KIEM CHUNG tu chinh log, khong tin vao ma thoat.
+        wrote = [l.strip() for l in lines if "bytes of flash written" in l]
+        verif = [l.strip() for l in lines if "bytes of flash verified" in l]
+        for l in wrote + verif:
+            print("   >", l[:100])
+        if p.returncode != 0:
+            for ln in lines[-3:]:
+                print("   |", ln[:100])
+            return False
+        if not wrote:
+            print("   [!] ma thoat 0 NHUNG log khong he co dong 'flash written'.")
+            return False
+        if not verif:
+            print("   (khong doi chieu — bootloader board nay khong doc nguoc duoc;")
+            print("    xac minh bang lenh VER sau khi nap)")
+        return True
     except subprocess.TimeoutExpired:
         p.kill()
         try:

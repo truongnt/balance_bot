@@ -1,0 +1,69 @@
+FQBN: arduino:avr:uno
+Using board 'uno' from platform in folder: C:\Users\truong.nguyen\AppData\Local\Arduino15\packages\arduino\hardware\avr\1.8.7
+Using core 'arduino' from platform in folder: C:\Users\truong.nguyen\AppData\Local\Arduino15\packages\arduino\hardware\avr\1.8.7
+
+Detecting libraries used...
+C:\Users\truong.nguyen\AppData\Local\Arduino15\packages\arduino\tools\avr-gcc\7.3.0-atmel3.6.1-arduino7/bin/avr-g++ -c -g -Os -w -std=gnu++11 -fpermissive -fno-exceptions -ffunction-sections -fdata-sections -fno-threadsafe-statics -Wno-error=narrowing -flto -w -x c++ -E -CC -mmcu=atmega328p -DF_CPU=16000000L -DARDUINO=10607 -DARDUINO_AVR_UNO -DARDUINO_ARCH_AVR -IC:\Users\truong.nguyen\AppData\Local\Arduino15\packages\arduino\hardware\avr\1.8.7\cores\arduino -IC:\Users\truong.nguyen\AppData\Local\Arduino15\packages\arduino\hardware\avr\1.8.7\variants\standard C:\Users\truong.nguyen\AppData\Local\arduino\sketches\1EDE32E473C544B5506F6F6776B2643F\sketch\robot_balance.ino.cpp -o nul
+Alternatives for Wire.h: [Wire@1.0]
+ResolveLibrary(Wire.h)
+  -> candidates: [Wire@1.0]
+C:\Users\truong.nguyen\AppData\Local\Arduino15\packages\arduino\tools\avr-gcc\7.3.0-atmel3.6.1-arduino7/bin/avr-g++ -c -g -Os -w -std=gnu++11 -fpermissive -fno-exceptions -ffunction-sections -fdata-sections -fno-threadsafe-statics -Wno-error=narrowing -flto -w -x c++ -E -CC -mmcu=atmega328p -DF_CPU=16000000L -DARDUINO=10607 -DARDUINO_AVR_UNO -DARDUINO_ARCH_AVR -IC:\Users\truong.nguyen\AppData\Local\Arduino15\packages\arduino\hardware\avr\1.8.7\cores\arduino -IC:\Users\truong.nguyen\AppData\Local\Arduino15\packages\arduino\hardware\avr\1.8.7\variants\standard -IC:\Users\truong.nguyen\AppData\Local\Arduino15\packages\arduino\hardware\avr\1.8.7\libraries\Wire\src C:\Users\truong.nguyen\AppData\Local\arduino\sketches\1EDE32E473C544B5506F6F6776B2643F\sketch\robot_balance.ino.cpp -o nul
+Alternatives for EEPROM.h: [EEPROM@2.0]
+ResolveLibrary(EEPROM.h)
+  -> candidates: [EEPROM@2.0]
+C:\Users\truong.nguyen\AppData\Local\Arduino15\packages\arduino\tools\avr-gcc\7.3.0-atmel3.6.1-arduino7/bin/avr-g++ -c -g -Os -w -std=gnu++11 -fpermissive -fno-exceptions -ffunction-sections -fdata-sections -fno-threadsafe-statics -Wno-error=narrowing -flto -w -x c++ -E -CC -mmcu=atmega328p -DF_CPU=16000000L -DARDUINO=10607 -DARDUINO_AVR_UNO -DARDUINO_ARCH_AVR -IC:\Users\truong.nguyen\AppData\Local\Arduino15\packages\arduino\hardware\avr\1.8.7\cores\arduino -IC:\Users\truong.nguyen\AppData\Local\Arduino15\packages\arduino\hardware\avr\1.8.7\variants\standard -IC:\Users\truong.nguyen\AppData\Local\Arduino15\packages\arduino\hardware\avr\1.8.7\libraries\Wire\src -IC:\Users\truong.nguyen\AppData\Local\Arduino15\packages\arduino\hardware\avr\1.8.7\libraries\EEPROM\src C:\Users\truong.nguyen\AppData\Local\arduino\sketches\1EDE32E473C544B5506F6F6776B2643F\sketch\robot_balance.ino.cpp -o nul
+Using cached library dependencies for file: C:\Users\truong.nguyen\AppData\Local\Arduino15\packages\arduino\hardware\avr\1.8.7\libraries\Wire\src\Wire.cpp
+Using cached library dependencies for file: C:\Users\truong.nguyen\AppData\Local\Arduino15\packages\arduino\hardware\avr\1.8.7\libraries\Wire\src\utility\twi.c
+Generating function prototypes...
+C:\Users\truong.nguyen\AppData\Local\Arduino15\packages\arduino\tools\avr-gcc\7.3.0-atmel3.6.1-arduino7/bin/avr-g++ -c -g -Os -w -std=gnu++11 -fpermissive -fno-exceptions -ffunction-sections -fdata-sections -fno-threadsafe-statics -Wno-error=narrowing -flto -w -x c++ -E -CC -mmcu=atmega328p -DF_CPU=16000000L -DARDUINO=10607 -DARDUINO_AVR_UNO -DARDUINO_ARCH_AVR -IC:\Users\truong.nguyen\AppData\Local\Arduino15\packages\arduino\hardware\avr\1.8.7\cores\arduino -IC:\Users\truong.nguyen\AppData\Local\Arduino15\packages\arduino\hardware\avr\1.8.7\variants\standard -IC:\Users\truong.nguyen\AppData\Local\Arduino15\packages\arduino\hardware\avr\1.8.7\libraries\Wire\src -IC:\Users\truong.nguyen\AppData\Local\Arduino15\packages\arduino\hardware\avr\1.8.7\libraries\EEPROM\src C:\Users\truong.nguyen\AppData\Local\arduino\sketches\1EDE32E473C544B5506F6F6776B2643F\sketch\robot_balance.ino.cpp -o C:\Temp\1413000337\sketch_merged.cpp
+C:\Users\truong.nguyen\AppData\Local\Arduino15\packages\builtin\tools\ctags\5.8-arduino11/ctags -u --language-force=c++ -f - --c++-kinds=svpf --fields=KSTtzns --line-directives C:\Temp\1413000337\sketch_merged.cpp
+
+Compiling sketch...
+"C:\\Users\\truong.nguyen\\AppData\\Local\\Arduino15\\packages\\arduino\\tools\\avr-gcc\\7.3.0-atmel3.6.1-arduino7/bin/avr-g++" -c -g -Os -w -std=gnu++11 -fpermissive -fno-exceptions -ffunction-sections -fdata-sections -fno-threadsafe-statics -Wno-error=narrowing -MMD -flto -mmcu=atmega328p -DF_CPU=16000000L -DARDUINO=10607 -DARDUINO_AVR_UNO -DARDUINO_ARCH_AVR "-IC:\\Users\\truong.nguyen\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.8.7\\cores\\arduino" "-IC:\\Users\\truong.nguyen\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.8.7\\variants\\standard" "-IC:\\Users\\truong.nguyen\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.8.7\\libraries\\Wire\\src" "-IC:\\Users\\truong.nguyen\\AppData\\Local\\Arduino15\\packages\\arduino\\hardware\\avr\\1.8.7\\libraries\\EEPROM\\src" "C:\\Users\\truong.nguyen\\AppData\\Local\\arduino\\sketches\\1EDE32E473C544B5506F6F6776B2643F\\sketch\\robot_balance.ino.cpp" -o "C:\\Users\\truong.nguyen\\AppData\\Local\\arduino\\sketches\\1EDE32E473C544B5506F6F6776B2643F\\sketch\\robot_balance.ino.cpp.o"
+Compiling libraries...
+Compiling library "Wire"
+Using previously compiled file: C:\Users\truong.nguyen\AppData\Local\arduino\sketches\1EDE32E473C544B5506F6F6776B2643F\libraries\Wire\utility\twi.c.o
+Using previously compiled file: C:\Users\truong.nguyen\AppData\Local\arduino\sketches\1EDE32E473C544B5506F6F6776B2643F\libraries\Wire\Wire.cpp.o
+Compiling library "EEPROM"
+Compiling core...
+Using precompiled core: C:\Users\truong.nguyen\AppData\Local\arduino\cores\arduino_avr_uno_281693c866650b39e3fd0b31ece5246c\core.a
+Linking everything together...
+"C:\\Users\\truong.nguyen\\AppData\\Local\\Arduino15\\packages\\arduino\\tools\\avr-gcc\\7.3.0-atmel3.6.1-arduino7/bin/avr-gcc" -w -Os -g -flto -fuse-linker-plugin -Wl,--gc-sections -mmcu=atmega328p -o "C:\\Users\\truong.nguyen\\AppData\\Local\\arduino\\sketches\\1EDE32E473C544B5506F6F6776B2643F/robot_balance.ino.elf" "C:\\Users\\truong.nguyen\\AppData\\Local\\arduino\\sketches\\1EDE32E473C544B5506F6F6776B2643F\\sketch\\robot_balance.ino.cpp.o" "C:\\Users\\truong.nguyen\\AppData\\Local\\arduino\\sketches\\1EDE32E473C544B5506F6F6776B2643F\\libraries\\Wire\\Wire.cpp.o" "C:\\Users\\truong.nguyen\\AppData\\Local\\arduino\\sketches\\1EDE32E473C544B5506F6F6776B2643F\\libraries\\Wire\\utility\\twi.c.o" "C:\\Users\\truong.nguyen\\AppData\\Local\\arduino\\sketches\\1EDE32E473C544B5506F6F6776B2643F/..\\..\\cores\\arduino_avr_uno_281693c866650b39e3fd0b31ece5246c\\core.a" "-LC:\\Users\\truong.nguyen\\AppData\\Local\\arduino\\sketches\\1EDE32E473C544B5506F6F6776B2643F" -lm
+"C:\\Users\\truong.nguyen\\AppData\\Local\\Arduino15\\packages\\arduino\\tools\\avr-gcc\\7.3.0-atmel3.6.1-arduino7/bin/avr-objcopy" -O ihex -j .eeprom --set-section-flags=.eeprom=alloc,load --no-change-warnings --change-section-lma .eeprom=0 "C:\\Users\\truong.nguyen\\AppData\\Local\\arduino\\sketches\\1EDE32E473C544B5506F6F6776B2643F/robot_balance.ino.elf" "C:\\Users\\truong.nguyen\\AppData\\Local\\arduino\\sketches\\1EDE32E473C544B5506F6F6776B2643F/robot_balance.ino.eep"
+"C:\\Users\\truong.nguyen\\AppData\\Local\\Arduino15\\packages\\arduino\\tools\\avr-gcc\\7.3.0-atmel3.6.1-arduino7/bin/avr-objcopy" -O ihex -R .eeprom "C:\\Users\\truong.nguyen\\AppData\\Local\\arduino\\sketches\\1EDE32E473C544B5506F6F6776B2643F/robot_balance.ino.elf" "C:\\Users\\truong.nguyen\\AppData\\Local\\arduino\\sketches\\1EDE32E473C544B5506F6F6776B2643F/robot_balance.ino.hex"
+Using library Wire at version 1.0 in folder: C:\Users\truong.nguyen\AppData\Local\Arduino15\packages\arduino\hardware\avr\1.8.7\libraries\Wire 
+Using library EEPROM at version 2.0 in folder: C:\Users\truong.nguyen\AppData\Local\Arduino15\packages\arduino\hardware\avr\1.8.7\libraries\EEPROM 
+"C:\\Users\\truong.nguyen\\AppData\\Local\\Arduino15\\packages\\arduino\\tools\\avr-gcc\\7.3.0-atmel3.6.1-arduino7/bin/avr-size" -A "C:\\Users\\truong.nguyen\\AppData\\Local\\arduino\\sketches\\1EDE32E473C544B5506F6F6776B2643F/robot_balance.ino.elf"
+Sketch uses 19288 bytes (59%) of program storage space. Maximum is 32256 bytes.
+Global variables use 772 bytes (37%) of dynamic memory, leaving 1276 bytes for local variables. Maximum is 2048 bytes.
+"C:\Users\truong.nguyen\AppData\Local\Arduino15\packages\arduino\tools\avrdude\8.0.0-arduino1/bin/avrdude" "-CC:\Users\truong.nguyen\AppData\Local\Arduino15\packages\arduino\tools\avrdude\8.0.0-arduino1/etc/avrdude.conf" -v -V -patmega328p -carduino "-PCOM7" -b115200 -D "-Uflash:w:C:\Users\truong.nguyen\AppData\Local\arduino\sketches\1EDE32E473C544B5506F6F6776B2643F/robot_balance.ino.hex:i"
+Avrdude version 8.0-arduino.1
+Copyright see https://github.com/avrdudes/avrdude/blob/main/AUTHORS
+
+System wide configuration file is C:\Users\truong.nguyen\AppData\Local\Arduino15\packages\arduino\tools\avrdude\8.0.0-arduino1\etc\avrdude.conf
+
+Using port            : COM7
+Using programmer      : arduino
+Setting baud rate     : 115200
+AVR part              : ATmega328P
+Programming modes     : SPM, ISP, HVPP, debugWIRE
+Programmer type       : Arduino
+Description           : Arduino bootloader using STK500 v1 protocol
+HW Version            : 3
+FW Version            : 4.4
+
+AVR device initialized and ready to accept instructions
+Device signature = 1E 95 0F (ATmega328P, ATA6614Q, LGT8F328P)
+Reading 19288 bytes for flash from input file robot_balance.ino.hex
+in 1 section [0, 0x4b57]: 151 pages and 40 pad bytes
+Writing 19288 bytes to flash
+Writing | ################################################## | 100% 1.98s
+19288 bytes of flash written
+Avrdude done.  Thank you.
+
+Used library Version Path
+Wire         1.0     C:\Users\truong.nguyen\AppData\Local\Arduino15\packages\arduino\hardware\avr\1.8.7\libraries\Wire
+EEPROM       2.0     C:\Users\truong.nguyen\AppData\Local\Arduino15\packages\arduino\hardware\avr\1.8.7\libraries\EEPROM
+
+Used platform Version Path
+arduino:avr   1.8.7   C:\Users\truong.nguyen\AppData\Local\Arduino15\packages\arduino\hardware\avr\1.8.7

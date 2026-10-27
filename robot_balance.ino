@@ -102,6 +102,12 @@ int16_t max_accel          = 350;   // B-ROBOT EVO2: MAX_ACCEL 14 x25 (1/8 step)
 #define MIN_STEP_RATE      8     // period toi da = ZERO_SPEED -> 250000/32000 = 7.8
 #define ZERO_SPEED         32000
 
+// Chuoi phien ban: DOI MOI LAN SUA FIRMWARE.
+// Hoi bang lenh "VER" qua BT/USB, va in luon trong banner khoi dong.
+// Co cai nay thi khong bao gio phai suy ra "chip dang chay ban nao" tu hanh vi
+// nua — 26/10 da suy sai hai lan, trong khi lenh nap van bao thanh cong.
+#define FW_VERSION "2026-10-27a-drive"
+
 // --- An toan --- tune LIVE qua "fall 45 / rec 10 / recg 100"
 float fall_angle    = 45.0f;
 float recover_angle = 10.0f;
@@ -894,6 +900,9 @@ void parseCommand(char* buf) {
   else if (strcmp(buf, "S") == 0) { bt_drive = 0; bt_turn = 0;
     noInterrupts(); pos_target = (stepsL + stepsR) / 2; interrupts();  // giu cho dang dung
     Serial.println(F("> STOP")); }
+  else if (strcmp(buf, "VER") == 0) {
+    Serial.print(F("> VER=")); Serial.println(F(FW_VERSION));
+  }
   else if (strcmp(buf, "P") == 0 || strcmp(buf, "GET") == 0) { printParams(); }
   // BIASADJ la lenh TUONG DOI nen khong nam trong bang
   else if (strcmp(buf, "BIASADJ") == 0) {

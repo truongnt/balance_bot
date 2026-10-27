@@ -1205,6 +1205,45 @@ strings in flash with `F()`. Keep new `Serial.print` literals wrapped in `F()`.
 
 Unplug the 12V motor supply before uploading over USB.
 
+## The board's flash stopped accepting writes — 2026-10-27
+
+**`arduino-cli upload` reports success on this board while changing nothing.** Every upload
+on 2026-10-27 printed `bytes of flash written` and `Avrdude done. Thank you.`, exited 0, and
+left the chip running the previous program. Three separate conclusions were drawn from
+behaviour before this was pinned down; do not repeat that. The evidence, in the order that
+settled it:
+
+1. **Telemetry disagreed with the source.** `speed` tracked `ctrlout` to within 1 step/s
+   while `drive` read 1.0, when the new `drive_sp` term should have put 200 step/s between
+   them. The source had the term, in the right place, unconditionally executed.
+2. **A version string settled it in one second.** `FW_VERSION` plus a `VER` command was
+   added for exactly this. After a "successful" upload the chip answered `? VER` — unknown
+   command. **Never infer which firmware is running from behaviour again; ask it.**
+3. **Verification is impossible here.** `arduino-cli` passes `-V` to avrdude (skip verify).
+   Forcing it with `-t` fails always: reading flash back returns a constant `0x62` at every
+   address, so this bootloader does not implement reads.
+4. **`Erased chip` is printed without erasing.** Running avrdude by hand without `-D` printed
+   `Erased chip`, wrote, and the old program still booted. A real erase cannot leave the old
+   program running.
+5. **A 2024-byte sketch proved it.** Uploading a minimal blink-and-print sketch reported
+   `2024 bytes of flash written`; the board came back up printing the robot banner.
+
+So the bootloader acknowledges erase, write and read without performing any of them.
+
+The device signature is `1E 95 0F`, which **does not identify the chip** — ATmega328P and
+the LGT8F328P clone share it, and avrdude lists both. The board enumerates as a USB CDC
+device (`VID_0843&PID_5740`), not the 16U2 or CH340 of a normal Uno.
+
+Worth trying, cheapest first: a different USB cable and port (a bootloader receiving
+corrupted pages may skip them and still ACK); then reflashing the bootloader over ISP with
+another Arduino, which also performs a real chip erase and clears any lock bits; then
+replacing the board.
+
+Until then **every parameter has to be set over Bluetooth and saved to EEPROM**, which
+still works. What cannot be changed is anything compiled in — including the forward/back
+drive fix, which is written, committed and verified to compile, but has never reached the
+chip.
+
 ## HC-05 Baud Change (one-time setup)
 
 1. Upload `hc05_config\hc05_config.ino` while HC-05 is **not** in AT mode (normal power)
