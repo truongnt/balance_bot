@@ -1205,7 +1205,54 @@ strings in flash with `F()`. Keep new `Serial.print` literals wrapped in `F()`.
 
 Unplug the 12V motor supply before uploading over USB.
 
-## The board's flash stopped accepting writes — 2026-10-27
+## The chip is an ATmega328PB, and that broke flashing — fixed 2026-10-27
+
+**Root cause: the MCU is an ATmega328PB (`1E 95 16`), not an ATmega328P (`1E 95 0F`).**
+Optiboot reports a hard-coded `1E 95 0F` over the bootloader regardless of the silicon, so
+avrdude saw the part it expected, wrote, and reported success — while the writes did not
+take. Reading the signature over ISP, which asks the hardware directly, is the only way the
+real part number ever appeared.
+
+**Fixed by reflashing the bootloader over ISP** with `-p atmega328pb`: chip erase, fuses
+(`lfuse FF`, `hfuse DE`, `efuse FD`), optiboot, lock `0x0F`. Normal USB uploads work again,
+confirmed by the version string changing from `2026-10-27a-drive` to `2026-10-27b`.
+
+### How it looked before it was understood
+
+Every upload printed `bytes of flash written` and `Avrdude done`, exited 0, and left the
+chip running the previous program. Three conclusions were drawn from behaviour before this
+was pinned down. What finally worked, in order:
+
+1. **Telemetry disagreed with the source.** `speed` tracked `ctrlout` to within 1 step/s
+   while `drive` read 1.0, when the new `drive_sp` term should have put 200 step/s between
+   them.
+2. **A version string settled it in one second.** `FW_VERSION` plus a `VER` command and the
+   same string in the boot banner. After a "successful" upload the chip answered `? VER`.
+   **Never infer which firmware is running from behaviour; ask it.**
+3. **Reading the upload log, which had never been done.** `arduino-cli` passes `-V` to
+   avrdude, so it never verifies. That one flag is why three days of uploads could report
+   success without ever being checked.
+4. **A second board proved the PC was fine.** A Mega 2560 on the same cable and toolchain
+   took a test sketch and ran it immediately.
+5. **ISP exposed the real signature.** At the default ArduinoISP clock the reads came back
+   bit-shifted — `0F 95 07` instead of `1E 95 0F`, every byte right-shifted one bit, which
+   is a signal-integrity symptom and not a wiring error. Dropping `SPI_CLOCK` from
+   `1000000/6` to `128000/6` gave a stable `1E 95 16` on six consecutive reads.
+
+### Things worth keeping from this
+
+- **`-B` does not work with the bundled ArduinoISP**; it answers `cannot set
+  Parm_STK_SCK_DURATION`. Patch `SPI_CLOCK` in the sketch and re-upload instead. The 10–47 µF
+  capacitor on the programmer's RESET must come out for that upload and go back afterwards.
+- **A chip erase wipes the EEPROM**, so every tuned parameter is lost. Re-send
+  `configs/balance_good.txt` and `save` after any bootloader burn.
+- **ISP is the only path that can verify.** The bootloader cannot read flash back — every
+  address returns `0x62` — so `-t` always fails over USB. Over ISP, `19428 bytes of flash
+  verified` is real.
+- `upload.py` reports the `written` line and saves the full avrdude log under `logs/`,
+  because the absence of a `verified` line was the clue that went unexamined for two days.
+
+## The old diagnosis, kept for the reasoning
 
 **`arduino-cli upload` reports success on this board while changing nothing.** Every upload
 on 2026-10-27 printed `bytes of flash written` and `Avrdude done. Thank you.`, exited 0, and
